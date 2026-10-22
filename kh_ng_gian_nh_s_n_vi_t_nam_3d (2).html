@@ -1,0 +1,3726 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nhà Sàn Truyền Thống Việt Nam - Trải Nghiệm 3D</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background-color: #0f172a;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-serif-vn {
+            font-family: 'Playfair Display', serif;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        /* Glassmorphism styles */
+        .glass-panel {
+            background: rgba(20, 18, 15, 0.72);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(245, 222, 179, 0.22);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+        .btn-cultural {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(245, 222, 179, 0.15);
+        }
+        .btn-cultural:hover {
+            background: rgba(217, 119, 6, 0.35);
+            border-color: rgba(251, 191, 36, 0.6);
+            transform: translateY(-2px);
+        }
+        .btn-cultural.active {
+            background: linear-gradient(135deg, rgba(180, 83, 9, 0.85), rgba(146, 64, 14, 0.9));
+            border-color: #fbbf24;
+            color: #fef3c7;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.35);
+        }
+        /* Custom Tooltip */
+        #hover-tooltip {
+            pointer-events: none;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+        /* Custom scrollbar for mobile menus */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(251, 191, 36, 0.4);
+            border-radius: 4px;
+        }
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 0.85; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.04); }
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="text-amber-50">
+
+    <!-- 3D WebGL Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Hover Interactive Tooltip -->
+    <div id="hover-tooltip" class="fixed z-30 opacity-0 px-3.5 py-2 rounded-xl glass-panel text-xs md:text-sm text-amber-100 flex items-center gap-2 shadow-xl transform -translate-x-1/2 -translate-y-full pointer-events-none">
+        <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+        <span id="tooltip-text" class="font-medium">Nhấn để tương tác</span>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-message" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-40 glass-panel px-5 py-2.5 rounded-full text-amber-200 text-sm font-medium opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-2.5 border border-amber-400/40">
+        <span id="toast-icon" class="text-lg">🍵</span>
+        <span id="toast-text">Đang thưởng thức trà sen nóng ấm...</span>
+    </div>
+
+    <!-- Top Header UI -->
+    <header class="fixed top-0 left-0 right-0 z-20 p-3 md:p-5 flex flex-wrap justify-between items-start gap-3 pointer-events-none">
+        <!-- Brand & Title -->
+        <div class="glass-panel px-4 py-3 rounded-2xl pointer-events-auto max-w-xs sm:max-w-md">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-amber-700/60 border border-amber-400/40 flex items-center justify-center text-xl shadow-inner">
+                    🏡
+                </div>
+                <div>
+                    <h1 class="font-serif-vn text-lg md:text-xl font-bold text-amber-200 tracking-wide leading-tight">
+                        Hồn Quê Nhà Sàn Việt
+                    </h1>
+                    <p class="text-[11px] md:text-xs text-amber-100/75">
+                        Kiến trúc & Cảnh quan Nhiệt đới 3D Tương tác
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Action Toggles (Time, Lanterns, Roof, Audio, Info) -->
+        <div class="flex flex-wrap items-center gap-2 pointer-events-auto">
+            <!-- Day / Sunset / Night Switcher -->
+            <div class="glass-panel p-1 rounded-xl flex items-center gap-1">
+                <button id="btn-day" onclick="setTimeOfDay('day')" class="btn-cultural active px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5" title="Ban ngày nắng ấm">
+                    <span>☀️</span> <span class="hidden sm:inline">Ban ngày</span>
+                </button>
+                <button id="btn-sunset" onclick="setTimeOfDay('sunset')" class="btn-cultural px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5" title="Hoàng hôn rực rỡ">
+                    <span>🌅</span> <span class="hidden sm:inline">Hoàng hôn</span>
+                </button>
+                <button id="btn-night" onclick="setTimeOfDay('night')" class="btn-cultural px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5" title="Đêm trăng & Đom đóm">
+                    <span>🌙</span> <span class="hidden sm:inline">Đêm trăng</span>
+                </button>
+            </div>
+
+            <!-- Lantern Toggle -->
+            <button id="btn-lanterns" onclick="toggleAllLanterns()" class="glass-panel btn-cultural px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5" title="Bật/Tắt đèn lồng lụa & đèn dầu">
+                <span>🏮</span> <span class="hidden md:inline">Đèn lồng</span>
+            </button>
+
+            <!-- Roof Material Toggle -->
+            <button id="btn-roof" onclick="toggleRoofStyle()" class="glass-panel btn-cultural px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5" title="Đổi chất liệu mái lá cọ / ngói đất nung">
+                <span>🌿</span> <span id="roof-label" class="hidden md:inline">Mái lá cọ</span>
+            </button>
+
+            <!-- Audio Toggle -->
+            <button id="btn-audio" onclick="toggleAudio()" class="glass-panel btn-cultural px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5" title="Bật/Tắt âm thanh thiên nhiên & đàn tranh">
+                <span id="audio-icon">🔇</span> <span id="audio-label" class="hidden md:inline">Âm thanh</span>
+            </button>
+
+            <!-- Teacher Quiz Manager Button -->
+            <button onclick="openPaintingQuiz('hoian', true)" class="glass-panel btn-cultural px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 text-amber-200 border border-amber-400/40" title="Quản lý tranh & câu hỏi Tiếng Anh cho Giáo viên">
+                <span>🎓</span> <span class="hidden sm:inline">Quản lý Câu hỏi (GV)</span>
+            </button>
+
+            <!-- Help Modal Button -->
+            <button onclick="toggleHelpModal()" class="glass-panel btn-cultural w-9 h-9 rounded-xl text-xs font-bold flex items-center justify-center text-amber-300" title="Hướng dẫn tương tác">
+                ?
+            </button>
+        </div>
+    </header>
+
+    <!-- Interactive Objects Quick Sidebar (Right Side) -->
+    <aside class="fixed right-3 top-1/2 transform -translate-y-1/2 z-20 hidden lg:flex flex-col gap-2 pointer-events-auto">
+        <div class="glass-panel p-2.5 rounded-2xl flex flex-col gap-1.5 w-48">
+            <div class="text-[11px] uppercase tracking-wider text-amber-300/80 font-semibold px-1 border-b border-amber-200/15 pb-1">
+                Tương tác văn hóa
+            </div>
+            <button onclick="triggerHammockSwing(true)" class="btn-cultural px-3 py-1.5 rounded-xl text-xs text-left flex items-center justify-between">
+                <span>🪢 Đung đưa võng đay</span>
+                <span class="text-[10px] text-amber-400">Gầm sàn</span>
+            </button>
+            <button onclick="toggleBambooBlinds(true)" class="btn-cultural px-3 py-1.5 rounded-xl text-xs text-left flex items-center justify-between">
+                <span>🎋 Cuộn/Thả mành tre</span>
+                <span class="text-[10px] text-amber-400">Hiên nhà</span>
+            </button>
+            <button onclick="pourTeaInteraction(true)" class="btn-cultural px-3 py-1.5 rounded-xl text-xs text-left flex items-center justify-between">
+                <span>🍵 Thưởng trà sen</span>
+                <span class="text-[10px] text-amber-400">Phản gỗ</span>
+            </button>
+            <button onclick="feedKoiFish()" class="btn-cultural px-3 py-1.5 rounded-xl text-xs text-left flex items-center justify-between">
+                <span>🐟 Rải cám cho cá Koi</span>
+                <span class="text-[10px] text-amber-400">Ao sen</span>
+            </button>
+            <button onclick="climbStairsAction()" class="btn-cultural px-3 py-1.5 rounded-xl text-xs text-left flex items-center justify-between">
+                <span>🪜 Leo cầu thang gỗ</span>
+                <span class="text-[10px] text-amber-400">Lên sàn</span>
+            </button>
+
+            <div class="text-[11px] uppercase tracking-wider text-amber-300/80 font-semibold px-1 border-b border-amber-200/15 pb-1 pt-2">
+                🖼️ Tranh & Quiz Tiếng Anh
+            </div>
+            <button onclick="openPaintingQuiz('hoian')" class="btn-cultural px-3 py-1.5 rounded-xl text-xs text-left flex items-center justify-between">
+                <span>🏮 Hội An Ancient Town</span>
+                <span class="text-[10px] text-amber-300" id="badge-count-hoian">3 Qs</span>
+            </button>
+            <button onclick="openPaintingQuiz('hue')" class="btn-cultural px-3 py-1.5 rounded-xl text-xs text-left flex items-center justify-between">
+                <span>🏯 Imperial City of Huế</span>
+                <span class="text-[10px] text-amber-300" id="badge-count-hue">3 Qs</span>
+            </button>
+            <button onclick="openPaintingQuiz('sadec')" class="btn-cultural px-3 py-1.5 rounded-xl text-xs text-left flex items-center justify-between">
+                <span>🌸 Sa Đéc Flower Village</span>
+                <span class="text-[10px] text-amber-300" id="badge-count-sadec">3 Qs</span>
+            </button>
+            <button onclick="openPaintingQuiz('halong')" class="btn-cultural px-3 py-1.5 rounded-xl text-xs text-left flex items-center justify-between">
+                <span>⛵ Hạ Long Heritage Bay</span>
+                <span class="text-[10px] text-amber-300" id="badge-count-halong">2 Qs</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- First Person Controls Overlay (Shown when in FPS Mode) -->
+    <div id="fps-controls-overlay" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-20 hidden pointer-events-auto w-11/12 max-w-xl">
+        <div class="glass-panel px-4 py-2.5 rounded-2xl flex flex-col items-center gap-2">
+            <div class="flex flex-wrap items-center justify-center gap-2 text-xs text-amber-200 font-medium text-center">
+                <span>🚶 <strong>WASD / Mũi tên:</strong> Di chuyển & Leo cầu thang</span>
+                <span class="hidden sm:inline">•</span>
+                <span><strong>Space:</strong> Nhảy</span>
+                <span class="hidden sm:inline">•</span>
+                <span><strong>Phím F / Click mặt ao:</strong> Rải thức ăn cá</span>
+            </div>
+            <div class="flex items-center gap-2 text-[11px] text-amber-300 bg-amber-950/60 px-3 py-1 rounded-full border border-amber-500/30">
+                <span id="fps-elevation-status">📍 Vị trí: Sân vườn (Đi tới chân cầu thang bên phải nhà để leo lên sàn)</span>
+                <button onclick="teleportToStairsAndClimb()" class="underline text-amber-200 hover:text-white ml-1 font-semibold">Đến cầu thang ngay</button>
+            </div>
+            <!-- On-screen D-Pad for mobile/touch -->
+            <div class="grid grid-cols-3 gap-1.5 w-32 sm:hidden mt-1">
+                <div></div>
+                <button onpointerdown="setMoveKey('forward', true)" onpointerup="setMoveKey('forward', false)" onpointerleave="setMoveKey('forward', false)" class="btn-cultural py-2 rounded-lg text-center font-bold">▲</button>
+                <div></div>
+                <button onpointerdown="setMoveKey('left', true)" onpointerup="setMoveKey('left', false)" onpointerleave="setMoveKey('left', false)" class="btn-cultural py-2 rounded-lg text-center font-bold">◀</button>
+                <button onpointerdown="setMoveKey('backward', true)" onpointerup="setMoveKey('backward', false)" onpointerleave="setMoveKey('backward', false)" class="btn-cultural py-2 rounded-lg text-center font-bold">▼</button>
+                <button onpointerdown="setMoveKey('right', true)" onpointerup="setMoveKey('right', false)" onpointerleave="setMoveKey('right', false)" class="btn-cultural py-2 rounded-lg text-center font-bold">▶</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Camera Views & Mobile Actions Bar -->
+    <footer class="fixed bottom-0 left-0 right-0 z-20 p-3 md:p-5 flex flex-col items-center gap-2 pointer-events-none">
+        <!-- Mobile Quick Cultural Interactions -->
+        <div class="flex lg:hidden gap-1.5 overflow-x-auto max-w-full pb-1 pointer-events-auto px-2">
+            <button onclick="openPaintingQuiz('hoian')" class="glass-panel btn-cultural px-3 py-1.5 rounded-xl text-xs whitespace-nowrap text-amber-200 border border-amber-400/40">🖼️ Tranh Hội An (EN)</button>
+            <button onclick="openPaintingQuiz('hue')" class="glass-panel btn-cultural px-3 py-1.5 rounded-xl text-xs whitespace-nowrap text-amber-200 border border-amber-400/40">🖼️ Tranh Huế (EN)</button>
+            <button onclick="openPaintingQuiz('sadec')" class="glass-panel btn-cultural px-3 py-1.5 rounded-xl text-xs whitespace-nowrap text-amber-200 border border-amber-400/40">🖼️ Làng Hoa Sa Đéc (EN)</button>
+            <button onclick="feedKoiFish()" class="glass-panel btn-cultural px-3 py-1.5 rounded-xl text-xs whitespace-nowrap">🐟 Cho cá ăn</button>
+            <button onclick="climbStairsAction()" class="glass-panel btn-cultural px-3 py-1.5 rounded-xl text-xs whitespace-nowrap">🪜 Leo cầu thang</button>
+        </div>
+
+        <!-- Camera Preset Bar -->
+        <div class="glass-panel p-1.5 rounded-2xl flex items-center gap-1 sm:gap-2 overflow-x-auto max-w-full pointer-events-auto shadow-2xl">
+            <button id="cam-overview" onclick="setCameraView('overview')" class="btn-cultural active px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap flex items-center gap-1.5">
+                <span>🏞️</span> <span>Toàn cảnh</span>
+            </button>
+            <button id="cam-veranda" onclick="setCameraView('veranda')" class="btn-cultural px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap flex items-center gap-1.5">
+                <span>🎋</span> <span>Hiên nhà sàn</span>
+            </button>
+            <button id="cam-gallery" onclick="setCameraView('gallery')" class="btn-cultural px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap flex items-center gap-1.5">
+                <span>🖼️</span> <span>Tranh Phong Cảnh (Quiz)</span>
+            </button>
+            <button id="cam-underneath" onclick="setCameraView('underneath')" class="btn-cultural px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap flex items-center gap-1.5">
+                <span>🍵</span> <span>Gầm sàn & Phản gỗ</span>
+            </button>
+            <button id="cam-pond" onclick="setCameraView('pond')" class="btn-cultural px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap flex items-center gap-1.5">
+                <span>🪷</span> <span>Ao sen & Cá Koi</span>
+            </button>
+            <button id="cam-fps" onclick="setCameraView('fps')" class="btn-cultural px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap flex items-center gap-1.5">
+                <span>🚶</span> <span>Đi dạo & Leo cầu thang</span>
+            </button>
+        </div>
+    </footer>
+
+    <!-- Landscape Painting Zoom & Interactive English Quiz Modal (Student + Teacher Mode) -->
+    <div id="painting-quiz-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 hidden">
+        <div class="glass-panel max-w-4xl w-full max-h-[92vh] rounded-3xl border border-amber-300/35 text-amber-50 shadow-2xl flex flex-col overflow-hidden">
+            <!-- Modal Header -->
+            <div class="px-5 py-3.5 border-b border-amber-200/20 flex flex-wrap items-center justify-between gap-2 bg-amber-950/40">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl" id="pq-icon">🏮</span>
+                    <div>
+                        <h2 id="pq-title" class="font-serif-vn text-lg sm:text-xl font-bold text-amber-200 leading-tight">
+                            Hội An Ancient Town
+                        </h2>
+                        <p id="pq-subtitle" class="text-xs text-amber-300/80">
+                            Vietnamese Heritage Landscape • Interactive English Practice
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Landscape Quick Switcher + Student/Teacher Mode Tabs -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <select id="pq-selector" onchange="openPaintingQuiz(this.value)" class="bg-amber-950/80 border border-amber-400/40 text-amber-100 text-xs rounded-xl px-2.5 py-1.5 focus:outline-none">
+                        <option value="hoian">🏮 Hội An Ancient Town</option>
+                        <option value="hue">🏯 Imperial City of Huế</option>
+                        <option value="sadec">🌸 Sa Đéc Flower Village</option>
+                        <option value="halong">⛵ Hạ Long Heritage Bay</option>
+                    </select>
+
+                    <div class="bg-black/40 p-1 rounded-xl flex items-center gap-1 border border-amber-200/15">
+                        <button id="tab-student-btn" onclick="switchQuizMode('student')" class="btn-cultural active px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1">
+                            <span>🧑‍🎓</span> <span>Học viên (Quiz)</span>
+                        </button>
+                        <button id="tab-teacher-btn" onclick="switchQuizMode('teacher')" class="btn-cultural px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1">
+                            <span>👩‍🏫</span> <span>Giáo viên (Chỉnh sửa)</span>
+                        </button>
+                    </div>
+
+                    <button onclick="closePaintingQuizModal()" class="w-8 h-8 rounded-xl bg-amber-900/50 hover:bg-red-700/70 flex items-center justify-center text-amber-100 font-bold transition" title="Đóng cửa sổ">
+                        ✕
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                <!-- Left Column: High-Res Zoomed Painting Preview & Cultural Description -->
+                <div class="lg:col-span-5 flex flex-col gap-3">
+                    <div class="relative rounded-2xl overflow-hidden border-2 border-amber-500/40 shadow-2xl bg-amber-950 aspect-[4/3] group">
+                        <img id="pq-art-preview" src="" alt="Vietnamese Landscape Painting" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3">
+                            <span id="pq-location-tag" class="text-[11px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/30 border border-amber-300/40 text-amber-200 font-semibold">
+                                Quảng Nam, Central Vietnam
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="bg-amber-950/45 border border-amber-400/20 rounded-2xl p-3.5 space-y-1.5">
+                        <div class="text-xs font-semibold text-amber-300 flex items-center justify-between">
+                            <span>📖 Cultural & Vocabulary Note:</span>
+                            <span id="pq-score-badge" class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                                Score: 0/0
+                            </span>
+                        </div>
+                        <p id="pq-description" class="text-xs text-amber-100/90 leading-relaxed italic"></p>
+                    </div>
+                </div>
+
+                <!-- Right Column: Student Quiz View OR Teacher Custom Editor View -->
+                <div class="lg:col-span-7 flex flex-col">
+                    <!-- STUDENT QUIZ PANEL -->
+                    <div id="pq-student-panel" class="space-y-4">
+                        <!-- Question Progress Header -->
+                        <div class="flex items-center justify-between border-b border-amber-200/15 pb-2">
+                            <div class="flex items-center gap-1.5 flex-wrap" id="pq-question-dots"></div>
+                            <span id="pq-progress-label" class="text-xs text-amber-300 font-semibold">Question 1 of 3</span>
+                        </div>
+
+                        <!-- Active Question Card -->
+                        <div id="pq-question-card" class="bg-amber-950/50 border border-amber-300/25 rounded-2xl p-4 sm:p-5 space-y-4">
+                            <div class="flex items-start justify-between gap-2">
+                                <span id="pq-q-type-badge" class="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-200 font-medium">
+                                    Multiple Choice
+                                </span>
+                            </div>
+
+                            <h3 id="pq-question-text" class="text-sm sm:text-base font-semibold text-white leading-snug">
+                                Loading question...
+                            </h3>
+
+                            <!-- Multiple Choice Options Container -->
+                            <div id="pq-mc-options" class="grid grid-cols-1 gap-2.5"></div>
+
+                            <!-- Short Answer / Open Speaking Text Input Container -->
+                            <div id="pq-text-answer-box" class="hidden space-y-2.5">
+                                <textarea id="pq-student-input" rows="2" placeholder="Type your English answer here..." class="w-full rounded-xl bg-black/40 border border-amber-400/40 p-3 text-xs sm:text-sm text-amber-50 focus:outline-none focus:border-amber-300"></textarea>
+                                <button onclick="checkStudentTextAnswer()" class="btn-cultural active px-4 py-2 rounded-xl text-xs font-semibold">
+                                    ✓ Check Answer (Kiểm tra đáp án)
+                                </button>
+                            </div>
+
+                            <!-- Instant Feedback & Explanation Box -->
+                            <div id="pq-feedback-box" class="hidden rounded-xl p-3 text-xs leading-relaxed border"></div>
+                        </div>
+
+                        <!-- Navigation Footer -->
+                        <div class="flex items-center justify-between pt-1">
+                            <button onclick="navigateQuizQuestion(-1)" id="pq-prev-btn" class="btn-cultural px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-1">
+                                ← Previous
+                            </button>
+                            <button onclick="resetCurrentPaintingQuiz()" class="text-xs text-amber-300/80 hover:text-amber-200 underline">
+                                ↻ Làm lại từ đầu (Reset)
+                            </button>
+                            <button onclick="navigateQuizQuestion(1)" id="pq-next-btn" class="btn-cultural active px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1">
+                                Next Question →
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TEACHER EDITOR PANEL -->
+                    <div id="pq-teacher-panel" class="hidden space-y-4">
+                        <div class="bg-amber-950/60 border border-amber-400/30 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <h3 class="text-xs sm:text-sm font-bold text-amber-200">
+                                    👩‍🏫 Trình Quản Lý Câu Hỏi Dành Cho Giáo Viên
+                                </h3>
+                                <p class="text-[11px] text-amber-100/75">
+                                    Giáo viên có thể tự do thêm/bớt số lượng câu hỏi, đổi nội dung câu hỏi và chỉnh sửa đáp án đúng cho từng bức tranh.
+                                </p>
+                            </div>
+                            <button onclick="addNewTeacherQuestion()" class="btn-cultural active px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0">
+                                <span>＋</span> <span>Thêm câu hỏi mới</span>
+                            </button>
+                        </div>
+
+                        <!-- Editable Description Input -->
+                        <div class="bg-black/30 p-3 rounded-xl border border-amber-200/15 space-y-1">
+                            <label class="text-[11px] text-amber-300 font-semibold block">
+                                📝 Mô tả bức tranh / Từ vựng gợi ý (Cultural Note):
+                            </label>
+                            <input id="teacher-desc-input" type="text" oninput="updatePaintingDescription(this.value)" class="w-full bg-amber-950/60 border border-amber-400/30 rounded-lg px-3 py-1.5 text-xs text-amber-50 focus:outline-none" />
+                        </div>
+
+                        <!-- Dynamic List of Questions to Edit -->
+                        <div id="teacher-questions-list" class="space-y-3 max-h-[42vh] overflow-y-auto pr-1"></div>
+
+                        <div class="flex items-center justify-between pt-2 border-t border-amber-200/15">
+                            <span class="text-[11px] text-emerald-300" id="teacher-save-status">
+                                ✓ Mọi thay đổi được áp dụng tức thì cho Học viên
+                            </span>
+                            <button onclick="switchQuizMode('student')" class="btn-cultural active px-4 py-2 rounded-xl text-xs font-semibold">
+                                ✓ Hoàn tất & Xem giao diện Học viên
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help & Cultural Guide Modal -->
+    <div id="help-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="glass-panel max-w-lg w-full rounded-3xl p-6 border border-amber-300/30 text-amber-50 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-amber-200/20 pb-3 mb-4">
+                <h2 class="font-serif-vn text-xl font-bold text-amber-300 flex items-center gap-2">
+                    <span>🪷</span> Khám Phá Không Gian Nhà Sàn Việt
+                </h2>
+                <button onclick="toggleHelpModal()" class="w-8 h-8 rounded-lg bg-amber-900/40 hover:bg-amber-700/60 flex items-center justify-center text-amber-200 font-bold">✕</button>
+            </div>
+            <div class="space-y-3 text-xs sm:text-sm text-amber-100/90 leading-relaxed">
+                <p>
+                    Mô hình 3D tái hiện kiến trúc <strong>Nhà sàn truyền thống vùng cao & nông thôn Việt Nam</strong> giữa khu vườn nhiệt đới thanh bình.
+                </p>
+                <div class="bg-amber-950/50 p-3.5 rounded-2xl border border-amber-500/20 space-y-2">
+                    <div class="font-semibold text-amber-300">🖱️ Điều khiển & Tương tác mới nhất:</div>
+                    <ul class="list-disc list-inside space-y-1.5 text-xs">
+                        <li><strong>🖼️ Tranh Phong Cảnh & Quiz Tiếng Anh:</strong> Nhấn trực tiếp vào 4 bức tranh treo trên tường hiên nhà và trong nhà sàn (<em>Hội An, Cố đô Huế, Làng hoa Sa Đéc, Vịnh Hạ Long</em>) để zoom cận cảnh và trả lời câu hỏi Tiếng Anh. Giáo viên có thể chuyển sang tab <strong>"👩‍🏫 Giáo viên (Chỉnh sửa)"</strong> để tùy ý thêm/xóa số lượng câu hỏi và sửa đáp án.</li>
+                        <li><strong>🐟 Cho Cá Koi Ăn:</strong> Nhấn trực tiếp vào <em>Mặt nước ao sen</em>, nhấn vào <em>Giỏ cám tre trên cầu gỗ</em>, hoặc bấm phím <strong>F</strong> để rải hạt thức ăn. Đàn cá Koi 3D sẽ quẫy đuôi bơi tới đớp mồi và tạo vòng sóng nước!</li>
+                        <li><strong>🪜 Leo Cầu Thang Lên Nhà Sàn:</strong> Nhấn vào <em>Cầu thang gỗ 9 bậc</em> hoặc bật chế độ <strong>Đi dạo (WASD)</strong> và bước lên cầu thang để đi lại trên hiên nhà và trong gian nhà sàn cao ráo.</li>
+                        <li><strong>Click vào vật thể 3D:</strong> Nhấn vào <em>Võng đay</em> để đung đưa, <em>Bộ ấm trà</em> để thưởng trà, <em>Mành tre</em> để cuộn/thả, hoặc <em>Đèn lồng</em> để thắp sáng.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-5 flex justify-end">
+                <button onclick="toggleHelpModal()" class="btn-cultural active px-5 py-2 rounded-xl text-xs font-semibold">
+                    Bắt đầu trải nghiệm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // 1. PROCEDURAL PBR TEXTURE GENERATOR (Wood, Bamboo, Thatch, Bricks, Koi Skins, Landscape Paintings)
+        // ============================================================================
+        function createWoodTexture(baseColor = '#5c3a21', grainColor = '#3d2310') {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = baseColor;
+            ctx.fillRect(0, 0, 512, 512);
+
+            ctx.strokeStyle = grainColor;
+            for (let i = 0; i < 450; i++) {
+                ctx.lineWidth = Math.random() * 2.5 + 0.5;
+                ctx.globalAlpha = Math.random() * 0.35 + 0.05;
+                ctx.beginPath();
+                const x = Math.random() * 512;
+                ctx.moveTo(x, 0);
+                ctx.bezierCurveTo(
+                    x + (Math.random() - 0.5) * 40, 170,
+                    x + (Math.random() - 0.5) * 40, 340,
+                    x + (Math.random() - 0.5) * 20, 512
+                );
+                ctx.stroke();
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        function createBambooWeaveTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#c89d54';
+            ctx.fillRect(0, 0, 512, 512);
+
+            const step = 32;
+            for (let y = 0; y < 512; y += step) {
+                for (let x = 0; x < 512; x += step) {
+                    const isEven = ((x / step) + (y / step)) % 2 === 0;
+                    ctx.fillStyle = isEven ? '#d7b16a' : '#b3863e';
+                    ctx.fillRect(x + 1, y + 1, step - 2, step - 2);
+                    ctx.strokeStyle = '#785322';
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(x, y, step, step);
+                }
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(6, 6);
+            return tex;
+        }
+
+        function createPalmThatchTexture(isTerracotta = false) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            if (isTerracotta) {
+                // Traditional Vietnamese Terracotta Fish-scale Roof Tiles (Ngói mũi hài)
+                ctx.fillStyle = '#9c3d26';
+                ctx.fillRect(0, 0, 512, 512);
+                const rows = 12;
+                const cols = 10;
+                const w = 512 / cols;
+                const h = 512 / rows;
+                for (let r = 0; r <= rows; r++) {
+                    for (let c = -1; c <= cols; c++) {
+                        const offsetX = (r % 2) * (w / 2);
+                        const cx = c * w + offsetX;
+                        const cy = r * h;
+                        const grad = ctx.createLinearGradient(cx, cy - h, cx, cy + h);
+                        grad.addColorStop(0, '#7c2814');
+                        grad.addColorStop(0.5, '#b84a2e');
+                        grad.addColorStop(1, '#631d0e');
+                        ctx.fillStyle = grad;
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, w * 0.65, 0, Math.PI, false);
+                        ctx.fill();
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = '#4a1509';
+                        ctx.stroke();
+                    }
+                }
+            } else {
+                // Thick layered dried palm leaf thatch (Mái lá cọ)
+                ctx.fillStyle = '#6e5536';
+                ctx.fillRect(0, 0, 512, 512);
+                const colors = ['#594328', '#7d6240', '#8c6f4a', '#4d3920', '#967953'];
+                for (let y = 0; y < 512; y += 16) {
+                    ctx.fillStyle = '#3b2b17';
+                    ctx.fillRect(0, y, 512, 3);
+                    for (let i = 0; i < 160; i++) {
+                        ctx.strokeStyle = colors[Math.floor(Math.random() * colors.length)];
+                        ctx.lineWidth = Math.random() * 2.5 + 1;
+                        ctx.beginPath();
+                        const sx = Math.random() * 512;
+                        ctx.moveTo(sx, y);
+                        ctx.lineTo(sx + (Math.random() - 0.5) * 10, y + 18 + Math.random() * 10);
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(4, 4);
+            return tex;
+        }
+
+        function createRedBrickTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#65594d'; // Mortar
+            ctx.fillRect(0, 0, 512, 512);
+
+            const bw = 64;
+            const bh = 32;
+            for (let y = 0; y < 512; y += bh) {
+                const offset = (y / bh) % 2 === 0 ? 0 : bw / 2;
+                for (let x = -bw; x < 512; x += bw) {
+                    const shade = Math.floor(Math.random() * 25) - 12;
+                    ctx.fillStyle = `rgb(${168 + shade}, ${72 + shade}, ${50 + shade})`;
+                    ctx.fillRect(x + offset + 2, y + 2, bw - 4, bh - 4);
+                    // Mossy weathered corners
+                    if (Math.random() > 0.65) {
+                        ctx.fillStyle = 'rgba(65, 92, 45, 0.35)';
+                        ctx.fillRect(x + offset + 2, y + 2, 14, 10);
+                    }
+                }
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(2, 2);
+            return tex;
+        }
+
+        // Procedural Realistic Koi Fish Skin Texture (Kohaku, Sanke, Showa, Ogon)
+        function createKoiPatternTexture(variant = 0) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+
+            if (variant === 0) {
+                // Kohaku: Pure pearl white with vibrant hi (red-orange) patches
+                ctx.fillStyle = '#fff9f2';
+                ctx.fillRect(0, 0, 256, 128);
+                ctx.fillStyle = '#ea3c12';
+                [[70, 64, 48, 36], [155, 60, 52, 42], [215, 64, 25, 22]].forEach(([x, y, rx, ry]) => {
+                    ctx.beginPath();
+                    ctx.ellipse(x, y, rx, ry, 0.2, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            } else if (variant === 1) {
+                // Taisho Sanke: White base, red patches, and deep sumi black accents
+                ctx.fillStyle = '#fdfaf6';
+                ctx.fillRect(0, 0, 256, 128);
+                ctx.fillStyle = '#dc2626';
+                [[65, 64, 45, 38], [160, 68, 46, 35]].forEach(([x, y, rx, ry]) => {
+                    ctx.beginPath();
+                    ctx.ellipse(x, y, rx, ry, -0.15, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.fillStyle = '#18181b';
+                [[105, 45, 20, 14], [140, 82, 24, 16], [200, 58, 18, 15]].forEach(([x, y, rx, ry]) => {
+                    ctx.beginPath();
+                    ctx.ellipse(x, y, rx, ry, 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            } else if (variant === 2) {
+                // Yamabuki Ogon: Metallic golden yellow Koi
+                const grad = ctx.createLinearGradient(0, 0, 256, 128);
+                grad.addColorStop(0, '#facc15');
+                grad.addColorStop(0.5, '#fde047');
+                grad.addColorStop(1, '#eab308');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, 256, 128);
+            } else if (variant === 3) {
+                // Showa Sanshoku: Black base with red and white markings
+                ctx.fillStyle = '#1e1b18';
+                ctx.fillRect(0, 0, 256, 128);
+                ctx.fillStyle = '#f8fafc';
+                [[80, 64, 42, 36], [190, 64, 38, 30]].forEach(([x, y, rx, ry]) => {
+                    ctx.beginPath();
+                    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.fillStyle = '#ef4444';
+                [[55, 64, 34, 30], [140, 60, 44, 36]].forEach(([x, y, rx, ry]) => {
+                    ctx.beginPath();
+                    ctx.ellipse(x, y, rx, ry, 0.2, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            } else {
+                // Beni Kikokuryu: Orange-red back with white belly & dark scales
+                ctx.fillStyle = '#fff7ed';
+                ctx.fillRect(0, 0, 256, 128);
+                ctx.fillStyle = '#f97316';
+                ctx.beginPath();
+                ctx.ellipse(120, 64, 95, 38, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Subtle fish scale Diamond pattern overlay
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+            ctx.lineWidth = 1;
+            for (let x = 10; x < 240; x += 10) {
+                for (let y = 8; y < 120; y += 10) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, 6, -Math.PI / 2, Math.PI / 2);
+                    ctx.stroke();
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            return tex;
+        }
+
+        // Procedural High-Detail Vietnamese Heritage Landscape Paintings (Hội An, Huế, Sa Đéc, Hạ Long)
+        const paintingDataUrls = {};
+
+        function createLandscapePaintingTexture(paintingId) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 640;
+            canvas.height = 480;
+            const ctx = canvas.getContext('2d');
+
+            if (paintingId === 'hoian') {
+                // HỘI AN ANCIENT TOWN: Golden walls, Thu Bồn river, Japanese Covered Bridge & glowing silk lanterns
+                const sky = ctx.createLinearGradient(0, 0, 0, 270);
+                sky.addColorStop(0, '#1e1b4b');
+                sky.addColorStop(0.5, '#7c2d12');
+                sky.addColorStop(1, '#f59e0b');
+                ctx.fillStyle = sky;
+                ctx.fillRect(0, 0, 640, 270);
+
+                // Warm Sunset Sun
+                ctx.fillStyle = '#fef08a';
+                ctx.beginPath();
+                ctx.arc(320, 185, 42, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Ancient Mustard-Yellow Houses along the riverbank
+                const houses = [
+                    { x: 20, w: 115, h: 125, c: '#eab308' },
+                    { x: 130, w: 105, h: 145, c: '#d97706' },
+                    { x: 410, w: 110, h: 135, c: '#ca8a04' },
+                    { x: 515, w: 110, h: 120, c: '#eab308' }
+                ];
+                houses.forEach(b => {
+                    ctx.fillStyle = b.c;
+                    ctx.fillRect(b.x, 265 - b.h, b.w, b.h);
+                    // Mossy Yin-Yang Tile Roof
+                    ctx.fillStyle = '#451a03';
+                    ctx.beginPath();
+                    ctx.moveTo(b.x - 10, 265 - b.h);
+                    ctx.lineTo(b.x + b.w / 2, 265 - b.h - 36);
+                    ctx.lineTo(b.x + b.w + 10, 265 - b.h);
+                    ctx.closePath();
+                    ctx.fill();
+                    // Wooden shutter windows
+                    ctx.fillStyle = '#3f2305';
+                    ctx.fillRect(b.x + 22, 265 - b.h + 30, 24, 34);
+                    ctx.fillRect(b.x + b.w - 46, 265 - b.h + 30, 24, 34);
+                });
+
+                // Iconic Chùa Cầu (Japanese Covered Bridge) in center
+                ctx.fillStyle = '#9a3412';
+                ctx.fillRect(225, 165, 190, 95);
+                ctx.fillStyle = '#431407';
+                ctx.beginPath();
+                ctx.moveTo(205, 168);
+                ctx.quadraticCurveTo(320, 115, 435, 168);
+                ctx.closePath();
+                ctx.fill();
+                // Bridge arches
+                ctx.fillStyle = '#1e293b';
+                [265, 320, 375].forEach(ax => {
+                    ctx.beginPath();
+                    ctx.arc(ax, 265, 22, Math.PI, 0);
+                    ctx.fill();
+                });
+
+                // Thu Bồn River with glowing lantern reflections
+                const river = ctx.createLinearGradient(0, 265, 0, 480);
+                river.addColorStop(0, '#1e3a8a');
+                river.addColorStop(0.5, '#172554');
+                river.addColorStop(1, '#0f172a');
+                ctx.fillStyle = river;
+                ctx.fillRect(0, 265, 640, 215);
+
+                // Wooden Sampan Boats & Floating Flower Garlands (Hoa đăng)
+                [[150, 365], [460, 390]].forEach(([bx, by]) => {
+                    ctx.fillStyle = '#451a03';
+                    ctx.beginPath();
+                    ctx.moveTo(bx - 55, by);
+                    ctx.quadraticCurveTo(bx, by + 26, bx + 55, by);
+                    ctx.closePath();
+                    ctx.fill();
+                });
+
+                // Colorful Hanging Silk Lanterns & Water Reflections
+                const lanternColors = ['#ef4444', '#facc15', '#ec4899', '#22c55e', '#f97316'];
+                for (let i = 0; i < 14; i++) {
+                    const lx = 45 + i * 42;
+                    const ly = 115 + Math.sin(i * 1.2) * 18;
+                    const col = lanternColors[i % lanternColors.length];
+                    ctx.fillStyle = col;
+                    ctx.beginPath();
+                    ctx.ellipse(lx, ly, 9, 12, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Shimmering reflection on river
+                    ctx.fillStyle = col;
+                    ctx.globalAlpha = 0.45;
+                    ctx.fillRect(lx - 8, 290 + (i % 5) * 30, 16, 4);
+                    ctx.globalAlpha = 1.0;
+                }
+
+                // Title Banner on Canvas
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(18, 425, 285, 38);
+                ctx.fillStyle = '#fde68a';
+                ctx.font = 'bold 20px Georgia';
+                ctx.fillText('Hội An Ancient Town', 30, 450);
+
+            } else if (paintingId === 'hue') {
+                // IMPERIAL CITY OF HUẾ: Ngọ Môn Gate, Perfume River (Sông Hương), Royal Lotus & Truong Tien vibe
+                const sky = ctx.createLinearGradient(0, 0, 0, 260);
+                sky.addColorStop(0, '#3b0764');
+                sky.addColorStop(0.55, '#9333ea');
+                sky.addColorStop(1, '#fdba74');
+                ctx.fillStyle = sky;
+                ctx.fillRect(0, 0, 640, 260);
+
+                // Distant Ngự Bình Mountain
+                ctx.fillStyle = '#4c1d95';
+                ctx.beginPath();
+                ctx.moveTo(0, 260);
+                ctx.lineTo(140, 175);
+                ctx.lineTo(310, 220);
+                ctx.lineTo(510, 165);
+                ctx.lineTo(640, 260);
+                ctx.fill();
+
+                // Citadel Stone Fortress Wall & Five-Phoenix Pavilion (Lầu Ngũ Phụng - Đại Nội Huế)
+                ctx.fillStyle = '#57534e';
+                ctx.fillRect(90, 185, 460, 78);
+
+                // Three Royal Arched Entrances (Ngọ Môn)
+                ctx.fillStyle = '#1c1917';
+                [[245, 22], [320, 30], [395, 22]].forEach(([gx, gr]) => {
+                    ctx.beginPath();
+                    ctx.arc(gx, 263, gr, Math.PI, 0);
+                    ctx.fill();
+                });
+
+                // Red & Gold Imperial Pavilion Upper Tiers
+                ctx.fillStyle = '#991b1b';
+                ctx.fillRect(195, 125, 250, 60);
+                ctx.fillStyle = '#eab308';
+                for (let p = 0; p < 7; p++) {
+                    ctx.fillRect(210 + p * 36, 130, 6, 55);
+                }
+                // Curved Imperial Yellow-Glazed Roofs (Hoàng lưu ly)
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.moveTo(165, 130);
+                ctx.quadraticCurveTo(320, 82, 475, 130);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(215, 96);
+                ctx.quadraticCurveTo(320, 55, 425, 96);
+                ctx.closePath();
+                ctx.fill();
+
+                // Perfume River (Sông Hương) & Blooming Royal Pink Lotuses in Foreground
+                const river = ctx.createLinearGradient(0, 260, 0, 480);
+                river.addColorStop(0, '#4c1d95');
+                river.addColorStop(0.6, '#1e1b4b');
+                river.addColorStop(1, '#090d16');
+                ctx.fillStyle = river;
+                ctx.fillRect(0, 260, 640, 220);
+
+                for (let l = 0; l < 12; l++) {
+                    const lx = 50 + l * 50;
+                    const ly = 330 + (l % 3) * 42;
+                    ctx.fillStyle = '#15803d';
+                    ctx.beginPath();
+                    ctx.ellipse(lx, ly, 24, 9, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    if (l % 2 === 0) {
+                        ctx.fillStyle = '#f472b6';
+                        ctx.beginPath();
+                        ctx.arc(lx, ly - 8, 9, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(18, 425, 275, 38);
+                ctx.fillStyle = '#fde68a';
+                ctx.font = 'bold 20px Georgia';
+                ctx.fillText('Imperial City of Huế', 30, 450);
+
+            } else if (paintingId === 'sadec') {
+                // SA ĐÉC FLOWER VILLAGE (Làng Hoa Sa Đéc - Đồng Tháp): Elevated bamboo trellises above water canals & farmers in Nón Lá
+                const sky = ctx.createLinearGradient(0, 0, 0, 210);
+                sky.addColorStop(0, '#0284c7');
+                sky.addColorStop(1, '#bae6fd');
+                ctx.fillStyle = sky;
+                ctx.fillRect(0, 0, 640, 210);
+
+                // Distant Mekong Delta Coconut Palms
+                ctx.fillStyle = '#166534';
+                ctx.fillRect(0, 185, 640, 28);
+
+                // Flooded Canal Water Beneath the Flower Trellises (Giàn hoa trên mặt nước đặc trưng Sa Đéc)
+                const water = ctx.createLinearGradient(0, 210, 0, 480);
+                water.addColorStop(0, '#0369a1');
+                water.addColorStop(1, '#155e75');
+                ctx.fillStyle = water;
+                ctx.fillRect(0, 210, 640, 270);
+
+                // Perspective rows of colourful Chrysanthemums (Cúc mâm xôi vàng), Marigolds & Pink Roses on bamboo racks
+                const rowColors = ['#facc15', '#ec4899', '#f97316', '#ef4444', '#fde047'];
+                for (let row = 0; row < 5; row++) {
+                    const bx = 40 + row * 122;
+                    // Bamboo stilts in water
+                    ctx.strokeStyle = '#a16207';
+                    ctx.lineWidth = 3;
+                    for (let s = 230; s < 450; s += 38) {
+                        ctx.beginPath();
+                        ctx.moveTo(bx - 18, s);
+                        ctx.lineTo(bx - 18, s + 28);
+                        ctx.moveTo(bx + 18, s);
+                        ctx.lineTo(bx + 18, s + 28);
+                        ctx.stroke();
+                    }
+
+                    // Flower baskets along the row
+                    for (let z = 0; z < 9; z++) {
+                        const fy = 225 + z * 27;
+                        const radius = 14 + z * 1.4;
+                        ctx.fillStyle = '#15803d';
+                        ctx.beginPath();
+                        ctx.arc(bx, fy, radius, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = rowColors[(row + z) % rowColors.length];
+                        ctx.beginPath();
+                        ctx.arc(bx, fy - 3, radius * 0.85, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // Farmer paddling a wooden sampan boat wearing Nón Lá between flower rows
+                ctx.fillStyle = '#78350f';
+                ctx.beginPath();
+                ctx.ellipse(225, 365, 22, 55, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Nón lá (Conical hat)
+                ctx.fillStyle = '#fef3c7';
+                ctx.beginPath();
+                ctx.moveTo(205, 345);
+                ctx.lineTo(225, 322);
+                ctx.lineTo(245, 345);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(18, 425, 295, 38);
+                ctx.fillStyle = '#fde68a';
+                ctx.font = 'bold 20px Georgia';
+                ctx.fillText('Sa Đéc Flower Village', 30, 450);
+
+            } else {
+                // HẠ LONG HERITAGE BAY: Emerald water, towering limestone karsts & traditional red-sail junk boat
+                const sky = ctx.createLinearGradient(0, 0, 0, 240);
+                sky.addColorStop(0, '#0f766e');
+                sky.addColorStop(0.6, '#5eead4');
+                sky.addColorStop(1, '#fef3c7');
+                ctx.fillStyle = sky;
+                ctx.fillRect(0, 0, 640, 240);
+
+                // Towering Limestone Karst Islands (Đảo đá vôi vịnh Hạ Long)
+                const karsts = [
+                    { x: 60, y: 240, w: 120, h: 150, c: '#115e59' },
+                    { x: 210, y: 240, w: 95, h: 175, c: '#134e4a' },
+                    { x: 370, y: 240, w: 135, h: 160, c: '#0f766e' },
+                    { x: 500, y: 240, w: 110, h: 130, c: '#115e59' }
+                ];
+                karsts.forEach(k => {
+                    ctx.fillStyle = k.c;
+                    ctx.beginPath();
+                    ctx.moveTo(k.x, k.y);
+                    ctx.lineTo(k.x + k.w * 0.2, k.y - k.h);
+                    ctx.lineTo(k.x + k.w * 0.75, k.y - k.h * 0.88);
+                    ctx.lineTo(k.x + k.w, k.y);
+                    ctx.closePath();
+                    ctx.fill();
+                });
+
+                // Emerald Bay Waters
+                const sea = ctx.createLinearGradient(0, 240, 0, 480);
+                sea.addColorStop(0, '#0d9488');
+                sea.addColorStop(1, '#042f2e');
+                ctx.fillStyle = sea;
+                ctx.fillRect(0, 240, 640, 240);
+
+                // Traditional Red-Sail Wooden Boat (Thuyền buồm đỏ)
+                ctx.fillStyle = '#451a03';
+                ctx.beginPath();
+                ctx.moveTo(250, 345);
+                ctx.lineTo(360, 345);
+                ctx.lineTo(340, 368);
+                ctx.lineTo(270, 368);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#b91c1c';
+                ctx.beginPath();
+                ctx.moveTo(295, 342);
+                ctx.lineTo(295, 255);
+                ctx.lineTo(345, 330);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(18, 425, 285, 38);
+                ctx.fillStyle = '#fde68a';
+                ctx.font = 'bold 20px Georgia';
+                ctx.fillText('Hạ Long Heritage Bay', 30, 450);
+            }
+
+            // Decorative Inner Gold Silk Brocade Border
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 8;
+            ctx.strokeRect(6, 6, 628, 468);
+
+            paintingDataUrls[paintingId] = canvas.toDataURL('image/png');
+            const tex = new THREE.CanvasTexture(canvas);
+            return tex;
+        }
+
+        // ============================================================================
+        // 1B. LANDSCAPE PAINTINGS & EDITABLE ENGLISH QUIZ DATABASE (Student & Teacher)
+        // ============================================================================
+        const landscapeQuizData = {
+            hoian: {
+                id: 'hoian',
+                icon: '🏮',
+                title: 'Hội An Ancient Town',
+                locationTag: 'Quảng Nam Province, Central Vietnam',
+                description: 'Hội An is a UNESCO World Heritage ancient trading port famous for its mustard-yellow merchant houses, the Japanese Covered Bridge (Chùa Cầu), and colorful silk lanterns floating on the Thu Bồn River.',
+                camPos: new THREE.Vector3(-3.1, 3.65, 2.35),
+                camLook: new THREE.Vector3(-3.1, 3.65, 0.35),
+                questions: [
+                    {
+                        type: 'mc',
+                        question: 'What is Hội An Ancient Town most famous for at night?',
+                        options: [
+                            'A. Colorful glowing silk lanterns along the Thu Bồn River',
+                            'B. Snow-covered pine forests and ski resorts',
+                            'C. Underground subway stations and skyscrapers',
+                            'D. Desert sand dunes and camels'
+                        ],
+                        correctIndex: 0,
+                        sampleAnswer: 'Colorful glowing silk lanterns.',
+                        explanation: 'At night, Hội An Old Town is illuminated by thousands of traditional handmade silk lanterns.'
+                    },
+                    {
+                        type: 'mc',
+                        question: 'Which iconic historical bridge is a symbol of Hội An?',
+                        options: [
+                            'A. Golden Bridge in Đà Nẵng',
+                            'B. Japanese Covered Bridge (Chùa Cầu)',
+                            'C. Long Biên Bridge in Hà Nội',
+                            'D. Mỹ Thuận Bridge in the Mekong Delta'
+                        ],
+                        correctIndex: 1,
+                        sampleAnswer: 'The Japanese Covered Bridge (Chùa Cầu).',
+                        explanation: 'The 17th-century Japanese Covered Bridge (Chùa Cầu) is the architectural emblem of Hội An.'
+                    },
+                    {
+                        type: 'text',
+                        question: 'Speaking / Writing Prompt: Describe two things you can see in this painting of Hội An in English.',
+                        options: [],
+                        correctIndex: 0,
+                        sampleAnswer: 'I can see yellow ancient houses, red silk lanterns, a covered bridge, and wooden boats on the river.',
+                        explanation: 'Great job! Key vocabulary: ancient houses, silk lanterns, river reflections, wooden boats.'
+                    }
+                ]
+            },
+            hue: {
+                id: 'hue',
+                icon: '🏯',
+                title: 'Imperial City of Huế',
+                locationTag: 'Thừa Thiên Huế, Central Vietnam',
+                description: 'Huế was the imperial capital of Vietnam under the Nguyễn Dynasty (1802–1945). It is renowned for the Majestic Citadel (Đại Nội), Ngọ Môn Gate, royal tombs, and the poetic Perfume River (Sông Hương).',
+                camPos: new THREE.Vector3(3.1, 3.65, 2.35),
+                camLook: new THREE.Vector3(3.1, 3.65, 0.35),
+                questions: [
+                    {
+                        type: 'mc',
+                        question: 'Which royal dynasty established the Imperial City of Huế as the capital of Vietnam?',
+                        options: [
+                            'A. The Lý Dynasty',
+                            'B. The Trần Dynasty',
+                            'C. The Nguyễn Dynasty',
+                            'D. The Ngô Dynasty'
+                        ],
+                        correctIndex: 2,
+                        sampleAnswer: 'The Nguyễn Dynasty.',
+                        explanation: 'The Nguyễn Dynasty ruled from Huế between 1802 and 1945.'
+                    },
+                    {
+                        type: 'mc',
+                        question: 'What is the English name of the romantic "Sông Hương" flowing through Huế?',
+                        options: [
+                            'A. The Red River',
+                            'B. The Perfume River',
+                            'C. The Dragon River',
+                            'D. The Silver Stream'
+                        ],
+                        correctIndex: 1,
+                        sampleAnswer: 'The Perfume River.',
+                        explanation: 'Sông Hương is called the Perfume River because autumn blossoms from upstream orchards give the water a pleasant fragrance.'
+                    },
+                    {
+                        type: 'text',
+                        question: 'Vocabulary Practice: Why should visitors preserve historical monuments like the Huế Citadel?',
+                        options: [],
+                        correctIndex: 0,
+                        sampleAnswer: 'We should preserve them to protect our cultural heritage and teach future generations about history.',
+                        explanation: 'Suggested phrases: protect cultural heritage, historical value, traditional royal architecture.'
+                    }
+                ]
+            },
+            sadec: {
+                id: 'sadec',
+                icon: '🌸',
+                title: 'Sa Đéc Flower Village',
+                locationTag: 'Đồng Tháp Province, Mekong Delta',
+                description: 'Located beside the Tiền River in the Mekong Delta, Sa Đéc is a century-old ornamental flower village where farmers grow chrysanthemums (cúc mâm xôi) and roses on elevated bamboo trellises above water canals.',
+                camPos: new THREE.Vector3(-2.4, 3.85, -2.2),
+                camLook: new THREE.Vector3(-2.4, 3.85, -4.65),
+                questions: [
+                    {
+                        type: 'mc',
+                        question: 'How do farmers in Sa Đéc Flower Village uniquely grow their flowers?',
+                        options: [
+                            'A. Inside underground caves without sunlight',
+                            'B. On elevated bamboo trellises above flooded water canals',
+                            'C. On the rooftops of high-rise apartment buildings',
+                            'D. In frozen glass igloos'
+                        ],
+                        correctIndex: 1,
+                        sampleAnswer: 'On elevated bamboo trellises above water canals.',
+                        explanation: 'Growing flowers on bamboo racks above water allows farmers to tend plants by boat during the Mekong flood season.'
+                    },
+                    {
+                        type: 'mc',
+                        question: 'During which traditional Vietnamese festival is Sa Đéc Flower Village busiest and most colorful?',
+                        options: [
+                            'A. Tết (Lunar New Year)',
+                            'B. Mid-Autumn Festival',
+                            'C. Halloween',
+                            'D. Winter Solstice'
+                        ],
+                        correctIndex: 0,
+                        sampleAnswer: 'Tết (Vietnamese Lunar New Year).',
+                        explanation: 'Millions of flower baskets from Sa Đéc are transported across Southern Vietnam to decorate homes for Tết.'
+                    },
+                    {
+                        type: 'text',
+                        question: 'Describe how the farmer in the painting travels between the rows of flowers.',
+                        options: [],
+                        correctIndex: 0,
+                        sampleAnswer: 'The farmer wears a conical hat (nón lá) and paddles a small wooden boat along the water canal.',
+                        explanation: 'Useful words: paddle a wooden sampan/boat, conical hat (nón lá), flower baskets, bamboo trellis.'
+                    }
+                ]
+            },
+            halong: {
+                id: 'halong',
+                icon: '⛵',
+                title: 'Hạ Long Heritage Bay',
+                locationTag: 'Quảng Ninh Province, Northern Vietnam',
+                description: 'Hạ Long Bay ("Descending Dragon Bay") features nearly 2,000 towering limestone karst islands rising from emerald waters, recognized twice by UNESCO as a World Natural Heritage Site.',
+                camPos: new THREE.Vector3(2.4, 3.85, -2.2),
+                camLook: new THREE.Vector3(2.4, 3.85, -4.65),
+                questions: [
+                    {
+                        type: 'mc',
+                        question: 'What geological formations make Hạ Long Bay famous around the world?',
+                        options: [
+                            'A. Active lava volcanoes',
+                            'B. Thousands of limestone karst islands and caves',
+                            'C. Giant glacial icebergs',
+                            'D. Deep desert canyons'
+                        ],
+                        correctIndex: 1,
+                        sampleAnswer: 'Thousands of limestone karst islands and caves.',
+                        explanation: 'Hạ Long Bay has nearly 2,000 limestone islets shaped over 500 million years.'
+                    },
+                    {
+                        type: 'text',
+                        question: 'If a foreign tourist asks you what activities they can do in Hạ Long Bay, what would you recommend in English?',
+                        options: [],
+                        correctIndex: 0,
+                        sampleAnswer: 'You can take an overnight cruise, go kayaking on emerald waters, and explore magnificent limestone caves.',
+                        explanation: 'Great recommendations! Key phrases: go kayaking, take a boat cruise, explore caves, admire the sunset.'
+                    }
+                ]
+            }
+        };
+
+        let activePaintingId = 'hoian';
+        let activeQuestionIdx = 0;
+        let currentQuizMode = 'student';
+        const studentAnswerState = {}; // Tracks selected answers & scores per painting
+
+        // ============================================================================
+        // 2. WEB AUDIO SYNTHESIZER (Pentatonic Dan Tranh, Birds, Crickets, Splash, Footsteps)
+        // ============================================================================
+        // 2. WEB AUDIO SYNTHESIZER (Pentatonic Dan Tranh, Birds, Crickets, Tea Pour)
+        // ============================================================================
+        let audioCtx = null;
+        let isAudioPlaying = false;
+        let ambientInterval = null;
+        let windGainNode = null;
+
+        function initWebAudio() {
+            if (audioCtx) return;
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+
+            // Soft breeze / water stream white noise filter
+            const bufferSize = audioCtx.sampleRate * 2;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+            const whiteNoise = audioCtx.createBufferSource();
+            whiteNoise.buffer = noiseBuffer;
+            whiteNoise.loop = true;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 420;
+            filter.Q.value = 1.2;
+
+            windGainNode = audioCtx.createGain();
+            windGainNode.gain.value = 0.025;
+
+            whiteNoise.connect(filter);
+            filter.connect(windGainNode);
+            windGainNode.connect(audioCtx.destination);
+            whiteNoise.start(0);
+        }
+
+        // Vietnamese Pentatonic Scale (Hò - Xự - Xang - Xê - Cống)
+        const pentatonicFreqs = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+
+        function playDanTranhPluck(customFreq = null) {
+            if (!audioCtx || !isAudioPlaying) return;
+            const now = audioCtx.currentTime;
+            const freq = customFreq || pentatonicFreqs[Math.floor(Math.random() * pentatonicFreqs.length)];
+
+            const osc = audioCtx.createOscillator();
+            const osc2 = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'triangle';
+            osc2.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now);
+            osc2.frequency.setValueAtTime(freq * 2, now);
+
+            // Subtle pitch bend typical of Vietnamese Đàn Tranh
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.015, now + 0.35);
+            osc.frequency.exponentialRampToValueAtTime(freq, now + 1.1);
+
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(0.09, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0008, now + 2.6);
+
+            osc.connect(gain);
+            osc2.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(now);
+            osc2.start(now);
+            osc.stop(now + 2.7);
+            osc2.stop(now + 2.7);
+        }
+
+        function playBirdOrCricketSound() {
+            if (!audioCtx || !isAudioPlaying) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            if (currentTimeMode === 'night') {
+                // Night cricket chirp
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(4200, now);
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(0.02, now + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else {
+                // Morning bird tweet
+                osc.type = 'sine';
+                const base = 1800 + Math.random() * 600;
+                osc.frequency.setValueAtTime(base, now);
+                osc.frequency.linearRampToValueAtTime(base + 500, now + 0.08);
+                osc.frequency.linearRampToValueAtTime(base - 200, now + 0.18);
+                osc.frequency.linearRampToValueAtTime(base + 700, now + 0.28);
+
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(0.035, now + 0.04);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.38);
+            }
+        }
+
+        function playInteractionSound(type) {
+            if (!audioCtx) {
+                initWebAudio();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            if (type === 'tea') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.25);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+            } else if (type === 'wood') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.exponentialRampToValueAtTime(95, now + 0.18);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+            } else if (type === 'step') {
+                // Subtle wooden stair creak / step sound
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(115 + Math.random() * 35, now);
+                osc.frequency.exponentialRampToValueAtTime(65, now + 0.11);
+                gain.gain.setValueAtTime(0.07, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.14);
+                return;
+            } else if (type === 'splash') {
+                // Water droplet / pellet splash sound
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(320, now);
+                osc.frequency.exponentialRampToValueAtTime(780, now + 0.12);
+                gain.gain.setValueAtTime(0.07, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.18);
+                return;
+            } else if (type === 'gulp') {
+                // Cute Koi fish eating gulp sound
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(480, now);
+                osc.frequency.exponentialRampToValueAtTime(210, now + 0.09);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.12);
+                return;
+            } else {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(392.0, now);
+                gain.gain.setValueAtTime(0.07, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+            }
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.95);
+        }
+
+        function toggleAudio() {
+            initWebAudio();
+            isAudioPlaying = !isAudioPlaying;
+
+            const iconEl = document.getElementById('audio-icon');
+            const btnEl = document.getElementById('btn-audio');
+
+            if (isAudioPlaying) {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                if (windGainNode) windGainNode.gain.setTargetAtTime(0.025, audioCtx.currentTime, 0.5);
+                iconEl.textContent = '🔊';
+                btnEl.classList.add('active');
+                playDanTranhPluck(392.0);
+                ambientInterval = setInterval(() => {
+                    if (Math.random() > 0.35) playDanTranhPluck();
+                    if (Math.random() > 0.45) playBirdOrCricketSound();
+                }, 2200);
+                showToast('🎶', 'Đã bật nhạc đàn tranh & âm thanh thiên nhiên');
+            } else {
+                if (windGainNode) windGainNode.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.3);
+                iconEl.textContent = '🔇';
+                btnEl.classList.remove('active');
+                clearInterval(ambientInterval);
+                showToast('🔇', 'Đã tạm dừng âm thanh thiên nhiên');
+            }
+        }
+
+        // ============================================================================
+        // 3. THREE.JS SCENE, CAMERA, LIGHTING & ENVIRONMENT SETUP
+        // ============================================================================
+        let scene, camera, renderer, controls;
+        let sunLight, ambientLight, hemiLight;
+        let currentTimeMode = 'day';
+        let areLanternsOn = false;
+        let isTerracottaRoof = false;
+
+        // Interactive & Animated Object References
+        const interactiveMeshes = [];
+        let hammockPivot = null;
+        let hammockSwingEnergy = 0.35;
+        let bambooBlindsGroup = [];
+        let areBlindsRolledUp = false;
+        let blindsTargetScaleY = 1.0;
+        let lanternLights = [];
+        let lanternGlowMeshes = [];
+        let roofMeshes = [];
+        let palmThatchTex, terracottaTex;
+        let koiFishList = [];
+        let fishFoodPellets = [];
+        let waterRipples = [];
+        let lotusPetalsGroup = [];
+        let teaSteamParticles = [];
+        let firefliesSystem = null;
+        let waterMesh = null;
+        let swayingFoliage = [];
+
+        // Camera Animation & First Person Walk / Stair Climb State
+        let currentCameraMode = 'overview';
+        let cameraTransition = { active: false, targetPos: new THREE.Vector3(), targetLook: new THREE.Vector3() };
+        let autoClimbPath = { active: false, progress: 0 };
+        const moveState = { forward: false, backward: false, left: false, right: false };
+        let fpsYaw = -0.6;
+        let fpsPitch = 0;
+        let fpsVelocityY = 0;
+        let isGroundedFPS = true;
+        let currentGroundHeight = 0;
+        let stepSoundAccumulator = 0;
+        let isDraggingFPS = false;
+        let pointerDownPos = { x: 0, y: 0 };
+        let prevPointer = { x: 0, y: 0 };
+
+        function initScene() {
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x9bd3f5);
+            scene.fog = new THREE.FogExp2(0x9bd3f5, 0.011);
+
+            camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 250);
+            camera.position.set(17, 9.5, 19);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.1;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.03; // Prevent going underground
+            controls.minDistance = 2.5;
+            controls.maxDistance = 48;
+            controls.target.set(0, 3.2, 0);
+
+            setupLighting();
+            buildEnvironmentAndGround();
+            buildTraditionalStiltHouse();
+            buildUnderHouseCulturalItems();
+            buildLotusPondAndBridge();
+            buildTropicalFlora();
+            buildFireflies();
+            setupInteractionEvents();
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function setupLighting() {
+            hemiLight = new THREE.HemisphereLight(0xdff4ff, 0x4b6135, 0.65);
+            hemiLight.position.set(0, 30, 0);
+            scene.add(hemiLight);
+
+            ambientLight = new THREE.AmbientLight(0xfff4e0, 0.35);
+            scene.add(ambientLight);
+
+            sunLight = new THREE.DirectionalLight(0xfff1d0, 1.45);
+            sunLight.position.set(22, 32, 18);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 90;
+            const d = 26;
+            sunLight.shadow.camera.left = -d;
+            sunLight.shadow.camera.right = d;
+            sunLight.shadow.camera.top = d;
+            sunLight.shadow.camera.bottom = -d;
+            sunLight.shadow.bias = -0.0005;
+            scene.add(sunLight);
+        }
+
+        // ============================================================================
+        // 4. BUILDING GROUND, PATHWAYS, AND DISTANT MOUNTAINS
+        // ============================================================================
+        function buildEnvironmentAndGround() {
+            // Lush Tropical Grass Ground
+            const groundGeo = new THREE.CircleGeometry(75, 64);
+            const groundMat = new THREE.MeshStandardMaterial({
+                color: 0x4a6b36,
+                roughness: 0.92,
+                metalness: 0.05
+            });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Earthen courtyard directly under the stilt house
+            const dirtGeo = new THREE.PlaneGeometry(14, 10.5);
+            const dirtMat = new THREE.MeshStandardMaterial({
+                color: 0x735c43,
+                roughness: 0.95
+            });
+            const dirt = new THREE.Mesh(dirtGeo, dirtMat);
+            dirt.rotation.x = -Math.PI / 2;
+            dirt.position.set(0, 0.02, -1);
+            dirt.receiveShadow = true;
+            scene.add(dirt);
+
+            // Ancient Red Brick Pathway (Đường gạch đỏ cổ)
+            const brickTex = createRedBrickTexture();
+            const brickMat = new THREE.MeshStandardMaterial({
+                map: brickTex,
+                roughness: 0.85
+            });
+
+            const pathSegments = [
+                { x: 0, z: 4.5, w: 2.2, l: 4.0, rot: 0 },
+                { x: 1.2, z: 7.2, w: 2.0, l: 3.2, rot: -0.35 },
+                { x: 2.6, z: 9.8, w: 2.0, l: 3.2, rot: -0.2 }
+            ];
+            pathSegments.forEach(seg => {
+                const geo = new THREE.BoxGeometry(seg.w, 0.08, seg.l);
+                const mesh = new THREE.Mesh(geo, brickMat);
+                mesh.position.set(seg.x, 0.03, seg.z);
+                mesh.rotation.y = seg.rot;
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+            });
+
+            // Stepping stones towards the pond & bamboo grove
+            const stoneMat = new THREE.MeshStandardMaterial({ color: 0x808487, roughness: 0.9 });
+            const stoneCoords = [
+                [-2.2, 5.2], [-3.3, 6.2], [-4.1, 7.5], [-4.5, 8.8],
+                [4.2, 5.0], [5.4, 4.2], [6.6, 3.0]
+            ];
+            stoneCoords.forEach(([sx, sz]) => {
+                const sGeo = new THREE.CylinderGeometry(0.45, 0.52, 0.1, 7);
+                const sMesh = new THREE.Mesh(sGeo, stoneMat);
+                sMesh.position.set(sx, 0.04, sz);
+                sMesh.rotation.y = Math.random() * Math.PI;
+                sMesh.receiveShadow = true;
+                scene.add(sMesh);
+            });
+
+            // Distant Northern Vietnam Karst Mountains Silhouette
+            const mountainMat = new THREE.MeshStandardMaterial({
+                color: 0x3b593f,
+                roughness: 0.95
+            });
+            for (let i = 0; i < 14; i++) {
+                const angle = (i / 14) * Math.PI * 2;
+                if (angle > 0.4 && angle < 2.2) continue; // Keep front view open
+                const dist = 48 + Math.random() * 15;
+                const h = 14 + Math.random() * 16;
+                const r = 10 + Math.random() * 8;
+                const mGeo = new THREE.ConeGeometry(r, h, 7);
+                const mMesh = new THREE.Mesh(mGeo, mountainMat);
+                mMesh.position.set(Math.cos(angle) * dist, h / 2 - 2, Math.sin(angle) * dist);
+                mMesh.rotation.y = Math.random() * Math.PI;
+                scene.add(mMesh);
+            }
+        }
+
+        // ============================================================================
+        // 5. TRADITIONAL VIETNAMESE STILT HOUSE (NHÀ SÀN TRUYỀN THỐNG)
+        // ============================================================================
+        function buildTraditionalStiltHouse() {
+            const houseGroup = new THREE.Group();
+            houseGroup.position.set(0, 0, -1.5);
+            scene.add(houseGroup);
+
+            const darkWoodTex = createWoodTexture('#54341c', '#2e1a0c');
+            const lightWoodTex = createWoodTexture('#7c4f2b', '#4d2e16');
+            const bambooFloorTex = createBambooWeaveTexture();
+            palmThatchTex = createPalmThatchTexture(false);
+            terracottaTex = createPalmThatchTexture(true);
+
+            const pillarMat = new THREE.MeshStandardMaterial({ map: darkWoodTex, roughness: 0.8 });
+            const beamMat = new THREE.MeshStandardMaterial({ map: lightWoodTex, roughness: 0.75 });
+            const bambooFloorMat = new THREE.MeshStandardMaterial({ map: bambooFloorTex, roughness: 0.7 });
+            const bambooRailMat = new THREE.MeshStandardMaterial({ color: 0xc29b53, roughness: 0.6 });
+
+            // 1. Sturdy Timber Pillars (Các cột gỗ tự nhiên vững chắc + đá kê chân cột)
+            const colX = [-4.8, -1.6, 1.6, 4.8];
+            const colZ = [-3.2, 0, 3.2];
+            const floorHeight = 2.65;
+            const totalPillarHeight = 6.2;
+
+            const stoneBaseGeo = new THREE.CylinderGeometry(0.28, 0.34, 0.25, 8);
+            const stoneBaseMat = new THREE.MeshStandardMaterial({ color: 0x6c7073, roughness: 0.9 });
+
+            colX.forEach(x => {
+                colZ.forEach(z => {
+                    // Stone pedestal
+                    const base = new THREE.Mesh(stoneBaseGeo, stoneBaseMat);
+                    base.position.set(x, 0.125, z);
+                    base.receiveShadow = true;
+                    houseGroup.add(base);
+
+                    // Main wooden column
+                    const pHeight = (z === 3.2) ? 5.6 : totalPillarHeight;
+                    const pGeo = new THREE.CylinderGeometry(0.2, 0.23, pHeight, 12);
+                    const pillar = new THREE.Mesh(pGeo, pillarMat);
+                    pillar.position.set(x, pHeight / 2 + 0.2, z);
+                    pillar.castShadow = true;
+                    pillar.receiveShadow = true;
+                    houseGroup.add(pillar);
+                });
+            });
+
+            // Horizontal Structural Crossbeams (Xà ngang, xà dọc)
+            colZ.forEach(z => {
+                const beamGeo = new THREE.BoxGeometry(10.4, 0.22, 0.22);
+                const beam = new THREE.Mesh(beamGeo, beamMat);
+                beam.position.set(0, floorHeight - 0.12, z);
+                beam.castShadow = true;
+                houseGroup.add(beam);
+            });
+            colX.forEach(x => {
+                const beamGeo = new THREE.BoxGeometry(0.22, 0.22, 7.2);
+                const beam = new THREE.Mesh(beamGeo, beamMat);
+                beam.position.set(x, floorHeight - 0.12, 0);
+                beam.castShadow = true;
+                houseGroup.add(beam);
+            });
+
+            // 2. Elevated Woven Bamboo Floor (Sàn đan bằng tre cao ráo)
+            const mainFloorGeo = new THREE.BoxGeometry(10.2, 0.14, 7.0);
+            const mainFloor = new THREE.Mesh(mainFloorGeo, bambooFloorMat);
+            mainFloor.position.set(0, floorHeight, 0);
+            mainFloor.castShadow = true;
+            mainFloor.receiveShadow = true;
+            houseGroup.add(mainFloor);
+
+            // Extended Front Veranda Floor (Sàn hiên nhà phía trước)
+            const verandaGeo = new THREE.BoxGeometry(7.2, 0.12, 2.2);
+            const verandaFloor = new THREE.Mesh(verandaGeo, bambooFloorMat);
+            verandaFloor.position.set(-1.3, floorHeight - 0.04, 4.4);
+            verandaFloor.castShadow = true;
+            verandaFloor.receiveShadow = true;
+            houseGroup.add(verandaFloor);
+
+            // Veranda Support Posts
+            [-4.8, -1.6, 2.1].forEach(vx => {
+                const vPost = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 5.2, 10), pillarMat);
+                vPost.position.set(vx, 2.6, 5.3);
+                vPost.castShadow = true;
+                houseGroup.add(vPost);
+            });
+
+            // 3. Wooden Walls & Open Air Veranda Railing
+            const wallHeight = 2.9;
+            // Back Wall
+            const backWall = new THREE.Mesh(new THREE.BoxGeometry(9.8, wallHeight, 0.15), beamMat);
+            backWall.position.set(0, floorHeight + wallHeight / 2, -3.2);
+            backWall.castShadow = true;
+            backWall.receiveShadow = true;
+            houseGroup.add(backWall);
+
+            // Left & Right Side Walls with Windows
+            [-4.8, 4.8].forEach(wx => {
+                const sideWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, wallHeight, 6.4), beamMat);
+                sideWall.position.set(wx, floorHeight + wallHeight / 2, 0);
+                sideWall.castShadow = true;
+                houseGroup.add(sideWall);
+            });
+
+            // Front Wall (Recessed to create spacious veranda, with central open doorway)
+            const frontWallLeft = new THREE.Mesh(new THREE.BoxGeometry(3.2, wallHeight, 0.15), beamMat);
+            frontWallLeft.position.set(-3.2, floorHeight + wallHeight / 2, 1.8);
+            frontWallLeft.castShadow = true;
+            houseGroup.add(frontWallLeft);
+
+            const frontWallRight = new THREE.Mesh(new THREE.BoxGeometry(3.2, wallHeight, 0.15), beamMat);
+            frontWallRight.position.set(3.2, floorHeight + wallHeight / 2, 1.8);
+            frontWallRight.castShadow = true;
+            houseGroup.add(frontWallRight);
+
+            // 3B. Framed Cultural Landscape Paintings Mounted on Veranda & Interior Walls
+            // (Hội An Ancient Town, Imperial City of Huế, Sa Đéc Flower Village, Hạ Long Bay)
+            const goldFrameMat = new THREE.MeshStandardMaterial({
+                color: 0xd97706,
+                roughness: 0.35,
+                metalness: 0.5
+            });
+
+            const createFramedWallPainting = (paintingId, localX, localY, localZ, labelVi) => {
+                const frameGroup = new THREE.Group();
+                frameGroup.position.set(localX, localY, localZ);
+
+                const frameW = 1.62;
+                const frameH = 1.22;
+
+                // Outer carved wooden frame backing
+                const outerBox = new THREE.Mesh(new THREE.BoxGeometry(frameW + 0.14, frameH + 0.14, 0.06), pillarMat);
+                outerBox.castShadow = true;
+                frameGroup.add(outerBox);
+
+                // Inner gold trim border
+                const goldRim = new THREE.Mesh(new THREE.BoxGeometry(frameW + 0.04, frameH + 0.04, 0.07), goldFrameMat);
+                frameGroup.add(goldRim);
+
+                // Canvas Artwork Plane
+                const artTex = createLandscapePaintingTexture(paintingId);
+                const artMat = new THREE.MeshStandardMaterial({
+                    map: artTex,
+                    roughness: 0.35,
+                    metalness: 0.05
+                });
+                const canvasMesh = new THREE.Mesh(new THREE.PlaneGeometry(frameW, frameH), artMat);
+                canvasMesh.position.z = 0.038;
+                canvasMesh.userData = {
+                    interactive: true,
+                    type: 'painting',
+                    paintingId: paintingId,
+                    label: labelVi
+                };
+                interactiveMeshes.push(canvasMesh);
+                frameGroup.add(canvasMesh);
+
+                // Also make outer frame clickable for easy selection
+                outerBox.userData = canvasMesh.userData;
+                interactiveMeshes.push(outerBox);
+
+                // Warm gallery spotlight above each painting
+                const lampHood = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.12, 10), goldFrameMat);
+                lampHood.position.set(0, frameH / 2 + 0.14, 0.12);
+                lampHood.rotation.x = 0.4;
+                frameGroup.add(lampHood);
+
+                houseGroup.add(frameGroup);
+            };
+
+            // Mount 2 paintings on the front veranda walls (Left: Hội An, Right: Huế)
+            createFramedWallPainting(
+                'hoian',
+                -3.1,
+                floorHeight + 1.48,
+                1.91,
+                '🖼️ Tranh Phố Cổ Hội An (Nhấn để Zoom & Làm Quiz Tiếng Anh)'
+            );
+            createFramedWallPainting(
+                'hue',
+                3.1,
+                floorHeight + 1.48,
+                1.91,
+                '🖼️ Tranh Cố Đô Huế (Nhấn để Zoom & Làm Quiz Tiếng Anh)'
+            );
+
+            // Mount 2 paintings on the interior back wall (Left: Làng Hoa Sa Đéc, Right: Vịnh Hạ Long)
+            createFramedWallPainting(
+                'sadec',
+                -2.4,
+                floorHeight + 1.55,
+                -3.09,
+                '🖼️ Tranh Làng Hoa Sa Đéc (Nhấn để Zoom & Làm Quiz Tiếng Anh)'
+            );
+            createFramedWallPainting(
+                'halong',
+                2.4,
+                floorHeight + 1.55,
+                -3.09,
+                '🖼️ Tranh Vịnh Hạ Long (Nhấn để Zoom & Làm Quiz Tiếng Anh)'
+            );
+
+            // Warm interior ancestral altar & bamboo mat inside the house so walking inside feels rewarding
+            const interiorMat = new THREE.Mesh(
+                new THREE.BoxGeometry(4.2, 0.03, 3.2),
+                new THREE.MeshStandardMaterial({ map: bambooFloorTex, roughness: 0.8 })
+            );
+            interiorMat.position.set(0, floorHeight + 0.08, -0.5);
+            houseGroup.add(interiorMat);
+
+            const lowTable = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 0.9), pillarMat);
+            lowTable.position.set(0, floorHeight + 0.25, -1.2);
+            lowTable.castShadow = true;
+            houseGroup.add(lowTable);
+
+            // Bamboo Veranda Railings (Lan can tre hiên nhà)
+            const createRailing = (x, z, length, isZAxis = false) => {
+                const rGroup = new THREE.Group();
+                const topBar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, length, 8), bambooRailMat);
+                topBar.rotation.z = Math.PI / 2;
+                if (isZAxis) topBar.rotation.y = Math.PI / 2;
+                topBar.position.y = 0.85;
+                rGroup.add(topBar);
+
+                const botBar = topBar.clone();
+                botBar.position.y = 0.2;
+                rGroup.add(botBar);
+
+                const count = Math.floor(length / 0.35);
+                for (let i = 0; i <= count; i++) {
+                    const offset = -length / 2 + (i / count) * length;
+                    const baluster = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.85, 6), bambooRailMat);
+                    baluster.position.set(isZAxis ? 0 : offset, 0.42, isZAxis ? offset : 0);
+                    rGroup.add(baluster);
+                }
+                rGroup.position.set(x, floorHeight, z);
+                houseGroup.add(rGroup);
+            };
+
+            createRailing(-1.3, 5.35, 6.8, false); // Front veranda rail
+            createRailing(-4.8, 4.3, 2.1, true);   // Left veranda rail
+
+            // 4. Rustic Wooden Staircase (Cầu thang gỗ mộc mạc 9 bậc lành - Có thể leo lên!)
+            const stairGroup = new THREE.Group();
+            const stepCount = 9;
+            const startX = 3.2, startZ = 6.2;
+            const endZ = 3.3;
+
+            // Two angled stringer beams
+            [2.55, 3.85].forEach(sx => {
+                const stringerGeo = new THREE.BoxGeometry(0.14, 0.24, 4.1);
+                const stringer = new THREE.Mesh(stringerGeo, pillarMat);
+                stringer.position.set(sx, floorHeight / 2, (startZ + endZ) / 2);
+                stringer.rotation.x = 0.62;
+                stringer.castShadow = true;
+                stringer.userData = {
+                    interactive: true,
+                    type: 'stairs',
+                    label: '🪜 Cầu thang gỗ 9 bậc (Nhấn để leo lên nhà sàn)'
+                };
+                interactiveMeshes.push(stringer);
+                stairGroup.add(stringer);
+
+                // Handrail
+                const handrail = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 4.2, 8), bambooRailMat);
+                handrail.position.set(sx, floorHeight / 2 + 0.75, (startZ + endZ) / 2);
+                handrail.rotation.x = 0.62 + Math.PI / 2;
+                stairGroup.add(handrail);
+            });
+
+            for (let i = 0; i < stepCount; i++) {
+                const t = (i + 0.5) / stepCount;
+                const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.08, 0.34), beamMat);
+                stepMesh.position.set(startX, t * floorHeight, startZ - t * (startZ - endZ));
+                stepMesh.castShadow = true;
+                stepMesh.receiveShadow = true;
+                stepMesh.userData = {
+                    interactive: true,
+                    type: 'stairs',
+                    label: '🪜 Cầu thang gỗ 9 bậc (Nhấn để bước lên hiên nhà sàn)'
+                };
+                interactiveMeshes.push(stepMesh);
+                stairGroup.add(stepMesh);
+            }
+            houseGroup.add(stairGroup);
+
+            // 5. Woven Bamboo Blinds on the Veranda (Mành tre đan thông thoáng có thể cuộn/thả)
+            const blindPositions = [
+                { x: -3.2, z: 5.3, w: 2.8 },
+                { x: 0.2, z: 5.3, w: 2.8 }
+            ];
+            blindPositions.forEach(bp => {
+                const blindPivot = new THREE.Group();
+                blindPivot.position.set(bp.x, floorHeight + 2.45, bp.z);
+
+                const blindGeo = new THREE.BoxGeometry(bp.w, 1.55, 0.04);
+                // Shift geometry so scaling Y rolls it up towards the top bar
+                blindGeo.translate(0, -1.55 / 2, 0);
+                const blindMat = new THREE.MeshStandardMaterial({
+                    map: bambooFloorTex,
+                    roughness: 0.8,
+                    transparent: true,
+                    opacity: 0.92
+                });
+                const blindMesh = new THREE.Mesh(blindGeo, blindMat);
+                blindMesh.castShadow = true;
+                blindMesh.userData = {
+                    interactive: true,
+                    type: 'blinds',
+                    label: '🎋 Mành tre đan (Nhấn để cuộn / thả)'
+                };
+                interactiveMeshes.push(blindMesh);
+                blindPivot.add(blindMesh);
+                bambooBlindsGroup.push(blindPivot);
+                houseGroup.add(blindPivot);
+            });
+
+            // 6. Thick Palm Thatch Steep Roof (Mái lá cọ dày dặn vùng cao)
+            const roofMat = new THREE.MeshStandardMaterial({
+                map: palmThatchTex,
+                roughness: 0.92,
+                side: THREE.DoubleSide
+            });
+
+            const roofGroup = new THREE.Group();
+            roofGroup.position.set(0, floorHeight + wallHeight, 0.5);
+
+            // Main Front & Back Slopes
+            const slopeLength = 12.2;
+            const slopeDepth = 5.6;
+            const frontSlopeGeo = new THREE.BoxGeometry(slopeLength, 0.32, slopeDepth);
+            const frontSlope = new THREE.Mesh(frontSlopeGeo, roofMat);
+            frontSlope.position.set(0, 1.45, 2.05);
+            frontSlope.rotation.x = 0.68;
+            frontSlope.castShadow = true;
+            frontSlope.receiveShadow = true;
+            roofGroup.add(frontSlope);
+            roofMeshes.push(frontSlope);
+
+            const backSlope = new THREE.Mesh(frontSlopeGeo, roofMat);
+            backSlope.position.set(0, 1.45, -2.05);
+            backSlope.rotation.x = -0.68;
+            backSlope.castShadow = true;
+            backSlope.receiveShadow = true;
+            roofGroup.add(backSlope);
+            roofMeshes.push(backSlope);
+
+            // Steep Gable Ends (Đầu hồi nhà sàn kèm họa tiết khau cút truyền thống)
+            [-5.6, 5.6].forEach(gx => {
+                const gableShape = new THREE.Shape();
+                gableShape.moveTo(-3.9, 0);
+                gableShape.lineTo(3.9, 0);
+                gableShape.lineTo(0, 3.15);
+                gableShape.closePath();
+
+                const gableGeo = new THREE.ShapeGeometry(gableShape);
+                const gableMesh = new THREE.Mesh(gableGeo, beamMat);
+                gableMesh.rotation.y = Math.PI / 2;
+                gableMesh.position.set(gx, 0, 0);
+                roofGroup.add(gableMesh);
+
+                // Ornamental crossed wood finials (Khau cút vùng cao)
+                const horn1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.1, 0.12), pillarMat);
+                horn1.position.set(gx, 3.3, 0);
+                horn1.rotation.x = 0.5;
+                roofGroup.add(horn1);
+
+                const horn2 = horn1.clone();
+                horn2.rotation.x = -0.5;
+                roofGroup.add(horn2);
+            });
+
+            // Bamboo Roof Ridge Beam (Nóc mái)
+            const ridgeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 12.6, 12), pillarMat);
+            ridgeMesh.rotation.z = Math.PI / 2;
+            ridgeMesh.position.set(0, 3.15, 0);
+            roofGroup.add(ridgeMesh);
+
+            houseGroup.add(roofGroup);
+
+            // 7. Hanging Silk Lanterns on Veranda & Under House (Đèn lồng lụa ấm áp)
+            const lanternCoords = [
+                { x: -3.2, y: floorHeight + 2.25, z: 5.1, color: 0xea580c },
+                { x: 0.2, y: floorHeight + 2.25, z: 5.1, color: 0xd97706 },
+                { x: 1.8, y: floorHeight + 2.25, z: 3.4, color: 0xdc2626 },
+                { x: -1.6, y: floorHeight - 0.35, z: 0.2, color: 0xf59e0b }
+            ];
+
+            lanternCoords.forEach(lc => {
+                const lGroup = new THREE.Group();
+                lGroup.position.set(lc.x, lc.y, lc.z);
+
+                const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 6), pillarMat);
+                cord.position.y = 0.2;
+                lGroup.add(cord);
+
+                const bodyGeo = new THREE.SphereGeometry(0.24, 14, 12);
+                bodyGeo.scale(1, 1.25, 1);
+                const bodyMat = new THREE.MeshStandardMaterial({
+                    color: lc.color,
+                    emissive: lc.color,
+                    emissiveIntensity: 0.15,
+                    roughness: 0.4
+                });
+                const body = new THREE.Mesh(bodyGeo, bodyMat);
+                body.userData = {
+                    interactive: true,
+                    type: 'lantern',
+                    label: '🏮 Đèn lồng lụa (Nhấn để Bật / Tắt)'
+                };
+                interactiveMeshes.push(body);
+                lanternGlowMeshes.push(body);
+                lGroup.add(body);
+
+                const pLight = new THREE.PointLight(0xff9d3b, 0, 8.5, 2);
+                pLight.position.set(0, -0.05, 0);
+                lGroup.add(pLight);
+                lanternLights.push(pLight);
+
+                houseGroup.add(lGroup);
+            });
+        }
+
+        // ============================================================================
+        // 6. CULTURAL ITEMS UNDER THE STILT HOUSE (Võng đay, Phản gỗ, Ấm trà sen, Đèn dầu)
+        // ============================================================================
+        function buildUnderHouseCulturalItems() {
+            const underGroup = new THREE.Group();
+            underGroup.position.set(0, 0, -1.5);
+            scene.add(underGroup);
+
+            const darkWoodMat = new THREE.MeshStandardMaterial({
+                map: createWoodTexture('#4a2c18', '#29160a'),
+                roughness: 0.55
+            });
+            const matWeaveMat = new THREE.MeshStandardMaterial({
+                map: createBambooWeaveTexture(),
+                roughness: 0.75
+            });
+
+            // 1. Traditional Wooden Daybed (Chiếc phản gỗ lớn dưới gầm nhà sàn râm mát)
+            const phanGroup = new THREE.Group();
+            phanGroup.position.set(-1.6, 0, -1.2);
+
+            const slabGeo = new THREE.BoxGeometry(2.7, 0.14, 1.85);
+            const slab = new THREE.Mesh(slabGeo, darkWoodMat);
+            slab.position.y = 0.55;
+            slab.castShadow = true;
+            slab.receiveShadow = true;
+            phanGroup.add(slab);
+
+            const wovenMat = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.02, 1.65), matWeaveMat);
+            wovenMat.position.y = 0.63;
+            wovenMat.receiveShadow = true;
+            phanGroup.add(wovenMat);
+
+            // Carved wooden legs
+            [[-1.15, -0.75], [1.15, -0.75], [-1.15, 0.75], [1.15, 0.75]].forEach(([lx, lz]) => {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.55, 0.16), darkWoodMat);
+                leg.position.set(lx, 0.275, lz);
+                leg.castShadow = true;
+                phanGroup.add(leg);
+            });
+
+            // Ceramic Tea Set on Wooden Tray (Khay trà sen & ấm đất nung Bát Tràng)
+            const tray = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.04, 0.45), darkWoodMat);
+            tray.position.set(0, 0.66, 0);
+            tray.userData = {
+                interactive: true,
+                type: 'teaset',
+                label: '🍵 Bộ ấm trà sen (Nhấn để thưởng trà nóng)'
+            };
+            interactiveMeshes.push(tray);
+            phanGroup.add(tray);
+
+            const ceramicMat = new THREE.MeshStandardMaterial({ color: 0x8c4a27, roughness: 0.3, metalness: 0.1 });
+            const teapot = new THREE.Mesh(new THREE.SphereGeometry(0.11, 14, 12), ceramicMat);
+            teapot.scale.set(1, 0.85, 1);
+            teapot.position.set(-0.12, 0.75, 0);
+            teapot.castShadow = true;
+            teapot.userData = {
+                interactive: true,
+                type: 'teaset',
+                label: '🍵 Ấm trà Bát Tràng (Nhấn để rót trà)'
+            };
+            interactiveMeshes.push(teapot);
+            phanGroup.add(teapot);
+
+            // 4 Small Tea Cups
+            [[0.12, -0.1], [0.22, -0.02], [0.12, 0.1], [0.02, 0.12]].forEach(([cx, cz]) => {
+                const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.028, 0.05, 10), ceramicMat);
+                cup.position.set(cx, 0.705, cz);
+                cup.userData = {
+                    interactive: true,
+                    type: 'teaset',
+                    label: '🍵 Chén trà sen nóng'
+                };
+                interactiveMeshes.push(cup);
+                phanGroup.add(cup);
+            });
+
+            // Subtle rising tea steam particles
+            const steamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 });
+            for (let s = 0; s < 5; s++) {
+                const sMesh = new THREE.Mesh(new THREE.SphereGeometry(0.03 + s * 0.01, 6, 6), steamMat.clone());
+                sMesh.position.set(-0.12, 0.88 + s * 0.08, 0);
+                sMesh.userData = { baseY: 0.88, offset: s * 0.2 };
+                teaSteamParticles.push(sMesh);
+                phanGroup.add(sMesh);
+            }
+
+            // Rustic Oil Lamp on corner of the wooden bed (Đèn dầu cổ mộc mạc)
+            const lampBase = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.08, 0.1, 10),
+                new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.4, metalness: 0.5 })
+            );
+            lampBase.position.set(-0.85, 0.69, -0.5);
+            lampBase.userData = {
+                interactive: true,
+                type: 'lantern',
+                label: '🪔 Đèn dầu cổ (Nhấn để thắp sáng / tắt)'
+            };
+            interactiveMeshes.push(lampBase);
+            phanGroup.add(lampBase);
+
+            const lampGlass = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.03, 0.05, 0.16, 10),
+                new THREE.MeshStandardMaterial({
+                    color: 0xfef3c7,
+                    emissive: 0xf59e0b,
+                    emissiveIntensity: 0.2,
+                    transparent: true,
+                    opacity: 0.75
+                })
+            );
+            lampGlass.position.set(-0.85, 0.80, -0.5);
+            lanternGlowMeshes.push(lampGlass);
+            phanGroup.add(lampGlass);
+
+            underGroup.add(phanGroup);
+
+            // 2. Traditional Woven Jute Hammock (Võng đay truyền thống mắc giữa 2 cột nhà sàn)
+            hammockPivot = new THREE.Group();
+            hammockPivot.position.set(1.6, 1.55, 1.6);
+
+            const juteMat = new THREE.MeshStandardMaterial({
+                color: 0xc29b61,
+                roughness: 0.9,
+                side: THREE.DoubleSide
+            });
+
+            // Curved hammock body constructed from segments
+            const segs = 14;
+            const span = 2.75;
+            for (let i = 0; i < segs; i++) {
+                const t1 = (i / segs) - 0.5;
+                const offsetZ = t1 * span;
+                const dipY = -Math.cos(t1 * Math.PI) * 0.68;
+                const widthCurve = Math.cos(t1 * Math.PI) * 0.78 + 0.12;
+
+                const segGeo = new THREE.BoxGeometry(widthCurve, 0.025, (span / segs) * 1.05);
+                const segMesh = new THREE.Mesh(segGeo, juteMat);
+                segMesh.position.set(0, dipY, offsetZ);
+                segMesh.rotation.x = Math.sin(t1 * Math.PI) * 0.55;
+                segMesh.castShadow = true;
+                segMesh.userData = {
+                    interactive: true,
+                    type: 'hammock',
+                    label: '🪢 Võng đay truyền thống (Nhấn để đung đưa)'
+                };
+                interactiveMeshes.push(segMesh);
+                hammockPivot.add(segMesh);
+            }
+
+            // Hammock tie ropes to the pillars
+            const ropeGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.65, 6);
+            const ropeLeft = new THREE.Mesh(ropeGeo, juteMat);
+            ropeLeft.position.set(0, 0.05, -1.45);
+            ropeLeft.rotation.x = 0.85;
+            hammockPivot.add(ropeLeft);
+
+            const ropeRight = ropeLeft.clone();
+            ropeRight.position.set(0, 0.05, 1.45);
+            ropeRight.rotation.x = -0.85;
+            hammockPivot.add(ropeRight);
+
+            underGroup.add(hammockPivot);
+        }
+
+        // ============================================================================
+        // 7. SERENE LOTUS POND, REALISTIC ARTICULATED KOI FISH & FEEDING SYSTEM
+        // ============================================================================
+        const pondCenter = new THREE.Vector3(4.8, 0, 9.2);
+        const pondRadius = 5.4;
+
+        function createRealisticKoiMesh(variantIndex) {
+            const root = new THREE.Group();
+            const skinTex = createKoiPatternTexture(variantIndex);
+
+            const bodyMat = new THREE.MeshStandardMaterial({
+                map: skinTex,
+                roughness: 0.22,
+                metalness: variantIndex === 2 ? 0.45 : 0.1,
+                clearcoat: 1.0
+            });
+
+            const finMat = new THREE.MeshStandardMaterial({
+                color: variantIndex === 2 ? 0xfef08a : 0xfff1f2,
+                roughness: 0.3,
+                transparent: true,
+                opacity: 0.78,
+                side: THREE.DoubleSide
+            });
+
+            // 1. Head & Rounded Snout
+            const headGroup = new THREE.Group();
+            const headGeo = new THREE.SphereGeometry(0.115, 16, 14);
+            headGeo.scale(0.88, 0.72, 1.45);
+            const headMesh = new THREE.Mesh(headGeo, bodyMat);
+            headMesh.position.z = 0.14;
+            headMesh.castShadow = true;
+            headGroup.add(headMesh);
+
+            // Protruding Dark Eyes with white rim
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x09090b });
+            const eyeRimMat = new THREE.MeshBasicMaterial({ color: 0xfef3c7 });
+            [-0.082, 0.082].forEach(ex => {
+                const rim = new THREE.Mesh(new THREE.SphereGeometry(0.024, 8, 8), eyeRimMat);
+                rim.position.set(ex, 0.028, 0.22);
+                headGroup.add(rim);
+                const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.017, 8, 8), eyeMat);
+                pupil.position.set(ex * 1.08, 0.03, 0.228);
+                headGroup.add(pupil);
+            });
+
+            // Koi Whiskers (Barbels - Râu cá Koi đặc trưng)
+            const barbelMat = new THREE.MeshStandardMaterial({ color: 0xfca5a5, roughness: 0.4 });
+            [-0.048, 0.048].forEach(bx => {
+                const barbel = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.075, 5), barbelMat);
+                barbel.position.set(bx, -0.022, 0.29);
+                barbel.rotation.z = bx > 0 ? -0.55 : 0.55;
+                barbel.rotation.x = 0.45;
+                headGroup.add(barbel);
+            });
+
+            // Left & Right Pectoral Fins (Vây ngực quạt nước)
+            const pecGeo = new THREE.CircleGeometry(0.115, 12, 0, Math.PI * 0.78);
+            const leftPec = new THREE.Mesh(pecGeo, finMat);
+            leftPec.rotation.x = -Math.PI / 2;
+            leftPec.rotation.z = 0.45;
+            leftPec.position.set(0.08, -0.035, 0.08);
+            headGroup.add(leftPec);
+
+            const rightPec = new THREE.Mesh(pecGeo, finMat);
+            rightPec.rotation.x = -Math.PI / 2;
+            rightPec.rotation.z = Math.PI - 0.45;
+            rightPec.position.set(-0.08, -0.035, 0.08);
+            headGroup.add(rightPec);
+
+            root.add(headGroup);
+
+            // 2. Mid-Torso Segment + Flowing Dorsal Fin (Thân giữa & Vây lưng)
+            const midPivot = new THREE.Group();
+            midPivot.position.z = 0.03;
+            headGroup.add(midPivot);
+
+            const midGeo = new THREE.SphereGeometry(0.118, 16, 14);
+            midGeo.scale(0.84, 0.75, 1.35);
+            const midMesh = new THREE.Mesh(midGeo, bodyMat);
+            midMesh.position.z = -0.08;
+            midMesh.castShadow = true;
+            midPivot.add(midMesh);
+
+            // Dorsal Fin (Vây lưng)
+            const dorsalShape = new THREE.Shape();
+            dorsalShape.moveTo(0, 0);
+            dorsalShape.quadraticCurveTo(0.05, 0.13, -0.18, 0.09);
+            dorsalShape.lineTo(-0.22, 0);
+            dorsalShape.closePath();
+            const dorsalFin = new THREE.Mesh(new THREE.ShapeGeometry(dorsalShape), finMat);
+            dorsalFin.rotation.y = Math.PI / 2;
+            dorsalFin.position.set(0, 0.068, 0.02);
+            midPivot.add(dorsalFin);
+
+            // Pelvic ventral fins
+            [-0.045, 0.045].forEach(vx => {
+                const vFin = new THREE.Mesh(new THREE.CircleGeometry(0.06, 8, 0, Math.PI * 0.7), finMat);
+                vFin.rotation.x = -Math.PI / 2 + 0.3;
+                vFin.rotation.z = vx > 0 ? 0.4 : Math.PI - 0.4;
+                vFin.position.set(vx, -0.055, -0.1);
+                midPivot.add(vFin);
+            });
+
+            // 3. Posterior Tail Body Segment (Khớp thân sau)
+            const rearPivot = new THREE.Group();
+            rearPivot.position.z = -0.17;
+            midPivot.add(rearPivot);
+
+            const rearGeo = new THREE.ConeGeometry(0.086, 0.25, 14);
+            rearGeo.scale(0.76, 0.85, 1.0);
+            rearGeo.rotateX(-Math.PI / 2);
+            const rearMesh = new THREE.Mesh(rearGeo, bodyMat);
+            rearMesh.position.z = -0.11;
+            rearPivot.add(rearMesh);
+
+            // 4. Translucent Forked Caudal Fin (Vây đuôi lụa mềm mại)
+            const tailFinPivot = new THREE.Group();
+            tailFinPivot.position.z = -0.21;
+            rearPivot.add(tailFinPivot);
+
+            const tailShape = new THREE.Shape();
+            tailShape.moveTo(0, 0);
+            tailShape.quadraticCurveTo(0.11, 0.12, 0.21, 0.13);
+            tailShape.quadraticCurveTo(0.14, 0.0, 0.10, 0);
+            tailShape.quadraticCurveTo(0.14, 0.0, 0.21, -0.13);
+            tailShape.quadraticCurveTo(0.11, -0.12, 0, 0);
+
+            const tailFinGeo = new THREE.ShapeGeometry(tailShape);
+            const tailFinMesh = new THREE.Mesh(tailFinGeo, finMat);
+            tailFinMesh.rotation.y = Math.PI / 2;
+            tailFinPivot.add(tailFinMesh);
+
+            return {
+                root,
+                headGroup,
+                midPivot,
+                rearPivot,
+                tailFinPivot,
+                leftPec,
+                rightPec
+            };
+        }
+
+        function buildLotusPondAndBridge() {
+            // Pond Basin (Clickable to throw Koi food!)
+            const waterGeo = new THREE.CircleGeometry(5.6, 40);
+            const waterMat = new THREE.MeshStandardMaterial({
+                color: 0x18523f,
+                roughness: 0.12,
+                metalness: 0.65,
+                transparent: true,
+                opacity: 0.88
+            });
+            waterMesh = new THREE.Mesh(waterGeo, waterMat);
+            waterMesh.rotation.x = -Math.PI / 2;
+            waterMesh.position.set(pondCenter.x, 0.03, pondCenter.z);
+            waterMesh.receiveShadow = true;
+            waterMesh.userData = {
+                interactive: true,
+                type: 'pond_water',
+                label: '🐟 Mặt ao sen (Nhấn vào nước để rải thức ăn cho cá Koi)'
+            };
+            interactiveMeshes.push(waterMesh);
+            scene.add(waterMesh);
+
+            // Sandy / muddy pond bottom so fish stand out clearly
+            const pondBed = new THREE.Mesh(
+                new THREE.CircleGeometry(5.5, 32),
+                new THREE.MeshStandardMaterial({ color: 0x2a3b2c, roughness: 0.95 })
+            );
+            pondBed.rotation.x = -Math.PI / 2;
+            pondBed.position.set(pondCenter.x, -0.22, pondCenter.z);
+            scene.add(pondBed);
+
+            // Natural Stone Rim Around the Pond
+            const rockMat = new THREE.MeshStandardMaterial({ color: 0x6e7370, roughness: 0.9 });
+            const rockCount = 38;
+            for (let i = 0; i < rockCount; i++) {
+                const ang = (i / rockCount) * Math.PI * 2;
+                const rad = 5.45 + (Math.random() - 0.5) * 0.4;
+                const rx = pondCenter.x + Math.cos(ang) * rad;
+                const rz = pondCenter.z + Math.sin(ang) * rad;
+                const rGeo = new THREE.DodecahedronGeometry(0.35 + Math.random() * 0.3, 1);
+                const rMesh = new THREE.Mesh(rGeo, rockMat);
+                rMesh.scale.set(1.2, 0.6, 1.1);
+                rMesh.position.set(rx, 0.12, rz);
+                rMesh.rotation.y = Math.random() * Math.PI;
+                rMesh.castShadow = true;
+                rMesh.receiveShadow = true;
+                scene.add(rMesh);
+            }
+
+            // Floating Lotus Pads (Lá sen) & Blooming Pink Lotus Flowers (Hoa sen hồng)
+            const padMat = new THREE.MeshStandardMaterial({ color: 0x3b7a38, roughness: 0.8, side: THREE.DoubleSide });
+            const pinkPetalMat = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.4 });
+            const pistilMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.5 });
+
+            for (let i = 0; i < 22; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 1.6 + Math.random() * 3.1; // Keep center slightly clearer for watching Koi feed
+                const lx = pondCenter.x + Math.cos(angle) * dist;
+                const lz = pondCenter.z + Math.sin(angle) * dist;
+
+                const padRadius = 0.28 + Math.random() * 0.24;
+                const padGeo = new THREE.CircleGeometry(padRadius, 16, 0, Math.PI * 1.92);
+                const pad = new THREE.Mesh(padGeo, padMat);
+                pad.rotation.x = -Math.PI / 2;
+                pad.rotation.z = Math.random() * Math.PI * 2;
+                pad.position.set(lx, 0.055 + (i * 0.0005), lz);
+                pad.receiveShadow = true;
+                scene.add(pad);
+
+                if (i % 2 === 0) {
+                    const flowerGroup = new THREE.Group();
+                    flowerGroup.position.set(lx, 0.12, lz);
+
+                    const centerSeed = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.08, 8), pistilMat);
+                    centerSeed.position.y = 0.04;
+                    flowerGroup.add(centerSeed);
+
+                    for (let p = 0; p < 8; p++) {
+                        const pAng = (p / 8) * Math.PI * 2;
+                        const petal = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.18, 5), pinkPetalMat);
+                        petal.position.set(Math.cos(pAng) * 0.07, 0.06, Math.sin(pAng) * 0.07);
+                        petal.rotation.z = -Math.cos(pAng) * 0.55;
+                        petal.rotation.x = Math.sin(pAng) * 0.55;
+                        flowerGroup.add(petal);
+                    }
+                    flowerGroup.userData = { baseY: 0.12, phase: Math.random() * Math.PI * 2 };
+                    lotusPetalsGroup.push(flowerGroup);
+                    scene.add(flowerGroup);
+                }
+            }
+
+            // 12 Realistic Multi-Segment Articulated Koi Fish (Đàn cá Koi Nhật & cá chép vàng)
+            for (let k = 0; k < 12; k++) {
+                const koiParts = createRealisticKoiMesh(k % 5);
+                const scale = 0.85 + Math.random() * 0.45;
+                koiParts.root.scale.setScalar(scale);
+
+                const startAngle = (k / 12) * Math.PI * 2;
+                const startDist = 1.0 + Math.random() * 2.8;
+                const sx = pondCenter.x + Math.cos(startAngle) * startDist;
+                const sz = pondCenter.z + Math.sin(startAngle) * startDist;
+                koiParts.root.position.set(sx, -0.04, sz);
+                scene.add(koiParts.root);
+
+                // Pick random initial wander waypoint inside the pond
+                const wpAngle = Math.random() * Math.PI * 2;
+                const wpDist = Math.random() * 3.8;
+
+                koiFishList.push({
+                    ...koiParts,
+                    scale,
+                    pos: new THREE.Vector3(sx, -0.04, sz),
+                    heading: startAngle + Math.PI / 2,
+                    baseSpeed: 0.65 + Math.random() * 0.35,
+                    currentSpeed: 0.7,
+                    wigglePhase: Math.random() * Math.PI * 2,
+                    waypoint: new THREE.Vector3(
+                        pondCenter.x + Math.cos(wpAngle) * wpDist,
+                        -0.04,
+                        pondCenter.z + Math.sin(wpAngle) * wpDist
+                    ),
+                    excitedTimer: 0
+                });
+            }
+
+            // Rustic Bamboo & Wood Pier Overlooking the Lotus Pond (Cầu gỗ ngắm sen)
+            const pierGroup = new THREE.Group();
+            pierGroup.position.set(2.3, 0.22, 6.2);
+            pierGroup.rotation.y = -0.45;
+            const pierWoodMat = new THREE.MeshStandardMaterial({ color: 0x6e4726, roughness: 0.85 });
+
+            for (let p = 0; p < 8; p++) {
+                const plank = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.06, 0.26), pierWoodMat);
+                plank.position.set(0, 0, p * 0.3);
+                plank.castShadow = true;
+                pierGroup.add(plank);
+            }
+
+            // Woven Bamboo Fish Food Basket on the Pier (Giỏ cám cá bằng tre đan)
+            const basketGroup = new THREE.Group();
+            basketGroup.position.set(0.42, 0.14, 1.95);
+            const basketMat = new THREE.MeshStandardMaterial({
+                map: createBambooWeaveTexture(),
+                roughness: 0.75
+            });
+            const basketBody = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.13, 0.22, 14), basketMat);
+            basketBody.castShadow = true;
+            basketBody.userData = {
+                interactive: true,
+                type: 'fish_basket',
+                label: '🧺 Giỏ cám cá Koi (Nhấn để rải cám xuống ao sen)'
+            };
+            interactiveMeshes.push(basketBody);
+            basketGroup.add(basketBody);
+
+            const feedPile = new THREE.Mesh(
+                new THREE.SphereGeometry(0.13, 10, 8),
+                new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.9 })
+            );
+            feedPile.scale.set(1, 0.4, 1);
+            feedPile.position.y = 0.09;
+            basketGroup.add(feedPile);
+
+            pierGroup.add(basketGroup);
+            scene.add(pierGroup);
+        }
+
+        // Spawn expanding concentric water ripple rings on the pond surface
+        function spawnWaterRipple(x, z, maxScale = 1.0, colorHex = 0xe0f2fe) {
+            const ringGeo = new THREE.RingGeometry(0.04, 0.075, 24);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: colorHex,
+                transparent: true,
+                opacity: 0.65,
+                side: THREE.DoubleSide
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.set(x, 0.042, z);
+            scene.add(ring);
+            waterRipples.push({
+                mesh: ring,
+                age: 0,
+                maxAge: 1.25,
+                maxScale
+            });
+        }
+
+        // Spawn floating fish food pellets at a target point in the pond
+        function spawnFishFoodAt(targetX, targetZ, pelletCount = 12) {
+            // Clamp target inside the pond rim
+            const dx = targetX - pondCenter.x;
+            const dz = targetZ - pondCenter.z;
+            const distFromCenter = Math.hypot(dx, dz);
+            if (distFromCenter > 4.2) {
+                const ratio = 4.2 / distFromCenter;
+                targetX = pondCenter.x + dx * ratio;
+                targetZ = pondCenter.z + dz * ratio;
+            }
+
+            playInteractionSound('splash');
+            spawnWaterRipple(targetX, targetZ, 1.4, 0xfef3c7);
+
+            const pelletColors = [0xd97706, 0xb45309, 0xef4444, 0x65a30d];
+            for (let i = 0; i < pelletCount; i++) {
+                const ang = Math.random() * Math.PI * 2;
+                const spread = Math.random() * 0.75;
+                const px = targetX + Math.cos(ang) * spread;
+                const pz = targetZ + Math.sin(ang) * spread;
+
+                const pMat = new THREE.MeshStandardMaterial({
+                    color: pelletColors[i % pelletColors.length],
+                    roughness: 0.6,
+                    emissive: 0x78350f,
+                    emissiveIntensity: 0.25
+                });
+                const pellet = new THREE.Mesh(new THREE.SphereGeometry(0.036, 8, 8), pMat);
+                // Start slightly above water for a toss-in drop effect
+                pellet.position.set(px, 0.35 + Math.random() * 0.25, pz);
+                scene.add(pellet);
+
+                fishFoodPellets.push({
+                    mesh: pellet,
+                    eaten: false,
+                    age: 0,
+                    bobPhase: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        // ============================================================================
+        // 8. TROPICAL VIETNAMESE FLORA (Hàng cau cao vút, Cây chuối, Bụi tre rậm rạp)
+        // ============================================================================
+        function buildTropicalFlora() {
+            // 1. Towering Areca Palms (Hàng cau cao vút trước sân)
+            const createArecaPalm = (x, z, height = 7.8) => {
+                const palmGroup = new THREE.Group();
+                palmGroup.position.set(x, 0, z);
+
+                const trunkMat = new THREE.MeshStandardMaterial({ color: 0x7d8071, roughness: 0.85 });
+                const ringMat = new THREE.MeshStandardMaterial({ color: 0x5c5e52, roughness: 0.9 });
+                const segments = 12;
+                const segH = height / segments;
+
+                for (let i = 0; i < segments; i++) {
+                    const r = 0.15 - (i / segments) * 0.05;
+                    const seg = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.95, r, segH, 8), trunkMat);
+                    seg.position.y = i * segH + segH / 2;
+                    seg.castShadow = true;
+                    palmGroup.add(seg);
+
+                    const ring = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.03, r * 1.03, 0.04, 8), ringMat);
+                    ring.position.y = (i + 1) * segH;
+                    palmGroup.add(ring);
+                }
+
+                // Crown of feather fronds
+                const crownGroup = new THREE.Group();
+                crownGroup.position.y = height;
+                const frondMat = new THREE.MeshStandardMaterial({ color: 0x3b7a2e, roughness: 0.7, side: THREE.DoubleSide });
+
+                for (let f = 0; f < 9; f++) {
+                    const ang = (f / 9) * Math.PI * 2;
+                    const frondGeo = new THREE.BoxGeometry(0.35, 0.03, 2.2);
+                    frondGeo.translate(0, 0, 1.1);
+                    const frond = new THREE.Mesh(frondGeo, frondMat);
+                    frond.rotation.y = ang;
+                    frond.rotation.x = 0.35 + (f % 2) * 0.2;
+                    frond.castShadow = true;
+                    crownGroup.add(frond);
+                }
+
+                // Cluster of green areca nuts (Buồng cau)
+                const bunchMat = new THREE.MeshStandardMaterial({ color: 0x65a30d, roughness: 0.5 });
+                const bunch = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), bunchMat);
+                bunch.position.set(0.18, -0.35, 0);
+                crownGroup.add(bunch);
+
+                palmGroup.add(crownGroup);
+                swayingFoliage.push({ group: crownGroup, speed: 1.2, amp: 0.04, phase: Math.random() * 5 });
+                scene.add(palmGroup);
+            };
+
+            // Row of Areca Palms
+            [[-6.8, 5.5, 8.2], [-6.5, 8.5, 7.6], [-5.8, 11.5, 8.5], [8.2, 2.5, 8.0], [9.2, 5.8, 7.4]].forEach(([x, z, h]) => {
+                createArecaPalm(x, z, h);
+            });
+
+            // 2. Lush Banana Trees (Bụi cây chuối lá bản to)
+            const createBananaTree = (x, z, scale = 1.0) => {
+                const bGroup = new THREE.Group();
+                bGroup.position.set(x, 0, z);
+                bGroup.scale.setScalar(scale);
+
+                const stemMat = new THREE.MeshStandardMaterial({ color: 0x5c8d38, roughness: 0.75 });
+                const leafMat = new THREE.MeshStandardMaterial({ color: 0x4d9434, roughness: 0.6, side: THREE.DoubleSide });
+
+                const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.24, 2.4, 8), stemMat);
+                stem.position.y = 1.2;
+                stem.castShadow = true;
+                bGroup.add(stem);
+
+                const leavesCrown = new THREE.Group();
+                leavesCrown.position.y = 2.35;
+
+                for (let l = 0; l < 7; l++) {
+                    const lAng = (l / 7) * Math.PI * 2 + Math.random() * 0.3;
+                    const paddleGeo = new THREE.PlaneGeometry(0.68, 2.1, 2, 4);
+                    paddleGeo.translate(0, 1.05, 0);
+                    const paddle = new THREE.Mesh(paddleGeo, leafMat);
+                    paddle.rotation.y = lAng;
+                    paddle.rotation.x = 1.0 + Math.random() * 0.3;
+                    paddle.castShadow = true;
+                    leavesCrown.add(paddle);
+                }
+
+                bGroup.add(leavesCrown);
+                swayingFoliage.push({ group: leavesCrown, speed: 1.6, amp: 0.05, phase: Math.random() * 6 });
+                scene.add(bGroup);
+            };
+
+            [[-7.8, -1.5, 1.1], [-8.5, 0.2, 0.85], [-7.2, 0.8, 0.95], [7.5, -3.5, 1.15], [8.4, -2.0, 0.9]].forEach(([x, z, s]) => {
+                createBananaTree(x, z, s);
+            });
+
+            // 3. Dense Bamboo Groves (Bụi tre làng rậm rạp)
+            const createBambooCluster = (cx, cz, culmCount = 14) => {
+                const cluster = new THREE.Group();
+                cluster.position.set(cx, 0, cz);
+
+                const culmMat = new THREE.MeshStandardMaterial({ color: 0x567d35, roughness: 0.5 });
+                const foliageMat = new THREE.MeshStandardMaterial({ color: 0x3f6a28, roughness: 0.8 });
+
+                for (let i = 0; i < culmCount; i++) {
+                    const ox = (Math.random() - 0.5) * 2.2;
+                    const oz = (Math.random() - 0.5) * 2.2;
+                    const h = 6.5 + Math.random() * 3.5;
+
+                    const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, h, 7), culmMat);
+                    stalk.position.set(ox, h / 2, oz);
+                    stalk.rotation.z = (Math.random() - 0.5) * 0.14;
+                    stalk.rotation.x = (Math.random() - 0.5) * 0.14;
+                    stalk.castShadow = true;
+                    cluster.add(stalk);
+
+                    // Leafy canopy tuft
+                    const canopy = new THREE.Mesh(new THREE.DodecahedronGeometry(0.95, 1), foliageMat);
+                    canopy.position.set(ox * 1.3, h - 0.5, oz * 1.3);
+                    canopy.castShadow = true;
+                    cluster.add(canopy);
+                }
+
+                swayingFoliage.push({ group: cluster, speed: 0.9, amp: 0.025, phase: Math.random() * 4 });
+                scene.add(cluster);
+            };
+
+            [[-9.5, -5.5, 16], [-5.5, -7.8, 14], [6.5, -7.2, 16], [10.2, -4.5, 14], [-9.2, 4.0, 12]].forEach(([x, z, c]) => {
+                createBambooCluster(x, z, c);
+            });
+        }
+
+        // ============================================================================
+        // 9. NIGHTTIME FIREFLIES (Đom đóm phát sáng lung linh ban đêm)
+        // ============================================================================
+        function buildFireflies() {
+            const count = 90;
+            const geo = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+
+            for (let i = 0; i < count; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 28;
+                positions[i * 3 + 1] = 0.5 + Math.random() * 4.5;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 26;
+            }
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const mat = new THREE.PointsMaterial({
+                color: 0xd9f99d,
+                size: 0.22,
+                transparent: true,
+                opacity: 0.0
+            });
+
+            firefliesSystem = new THREE.Points(geo, mat);
+            scene.add(firefliesSystem);
+        }
+
+        // ============================================================================
+        // 10. RAYCASTER INTERACTIONS, UI CONTROLS & CAMERA PRESETS
+        // ============================================================================
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function setupInteractionEvents() {
+            const dom = renderer.domElement;
+            const tooltip = document.getElementById('hover-tooltip');
+            const tooltipText = document.getElementById('tooltip-text');
+
+            dom.addEventListener('pointermove', (e) => {
+                if (currentCameraMode === 'fps' && isDraggingFPS) {
+                    const dx = e.clientX - prevPointer.x;
+                    const dy = e.clientY - prevPointer.y;
+                    prevPointer = { x: e.clientX, y: e.clientY };
+                    fpsYaw -= dx * 0.004;
+                    fpsPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, fpsPitch - dy * 0.004));
+                    return;
+                }
+
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(interactiveMeshes, false);
+
+                if (intersects.length > 0) {
+                    const hit = intersects[0].object;
+                    dom.style.cursor = 'pointer';
+                    tooltipText.textContent = hit.userData.label || 'Nhấn để tương tác';
+                    tooltip.style.left = `${e.clientX}px`;
+                    tooltip.style.top = `${e.clientY - 12}px`;
+                    tooltip.style.opacity = '1';
+                } else {
+                    dom.style.cursor = currentCameraMode === 'fps' ? 'grab' : 'default';
+                    tooltip.style.opacity = '0';
+                }
+            });
+
+            dom.addEventListener('pointerdown', (e) => {
+                pointerDownPos = { x: e.clientX, y: e.clientY };
+                if (currentCameraMode === 'fps') {
+                    isDraggingFPS = true;
+                    prevPointer = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            dom.addEventListener('pointerup', (e) => {
+                isDraggingFPS = false;
+                // Distinguish a clean click/tap from a camera drag
+                const moveDist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+                if (moveDist > 6) return;
+
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(interactiveMeshes, false);
+
+                if (intersects.length > 0) {
+                    const hit = intersects[0];
+                    const type = hit.object.userData.type;
+                    if (type === 'hammock') triggerHammockSwing(true);
+                    else if (type === 'blinds') toggleBambooBlinds(true);
+                    else if (type === 'lantern') toggleAllLanterns();
+                    else if (type === 'teaset') pourTeaInteraction(true);
+                    else if (type === 'pond_water') {
+                        spawnFishFoodAt(hit.point.x, hit.point.z, 12);
+                        showToast('🐟', 'Đã rải cám xuống mặt nước! Đàn cá Koi đang bơi tới đớp mồi...');
+                    } else if (type === 'fish_basket') {
+                        feedKoiFish();
+                    } else if (type === 'stairs') {
+                        climbStairsAction();
+                    } else if (type === 'painting') {
+                        openPaintingQuiz(hit.object.userData.paintingId);
+                    }
+                }
+            });
+
+            // Keyboard Controls for First Person Mode, Jump & Quick Feed
+            window.addEventListener('keydown', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w' || e.key === 'ArrowUp') { moveState.forward = true; autoClimbPath.active = false; }
+                if (k === 's' || e.key === 'ArrowDown') { moveState.backward = true; autoClimbPath.active = false; }
+                if (k === 'a' || e.key === 'ArrowLeft') { moveState.left = true; autoClimbPath.active = false; }
+                if (k === 'd' || e.key === 'ArrowRight') { moveState.right = true; autoClimbPath.active = false; }
+                if (e.code === 'Space' && currentCameraMode === 'fps' && isGroundedFPS) {
+                    fpsVelocityY = 4.6;
+                    isGroundedFPS = false;
+                }
+                if (k === 'f') {
+                    feedKoiFish();
+                }
+            });
+            window.addEventListener('keyup', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w' || e.key === 'ArrowUp') moveState.forward = false;
+                if (k === 's' || e.key === 'ArrowDown') moveState.backward = false;
+                if (k === 'a' || e.key === 'ArrowLeft') moveState.left = false;
+                if (k === 'd' || e.key === 'ArrowRight') moveState.right = false;
+            });
+        }
+
+        function setMoveKey(dir, val) {
+            moveState[dir] = val;
+            if (val) autoClimbPath.active = false;
+        }
+
+        // Compute Walkable Elevation Heightmap (Ground + 9-step Wooden Staircase + Upper Veranda & Stilt Floor)
+        function getWalkableSurfaceHeight(x, z) {
+            // 1. Wooden Staircase Ramp Zone (World X: [2.35, 4.05], World Z: [1.75, 4.75])
+            // Bottom of stairs is at World Z = 4.75 (y = 0), Top is at World Z = 1.80 (y = 2.61)
+            if (x >= 2.30 && x <= 4.10 && z >= 1.75 && z <= 4.85) {
+                const t = Math.max(0, Math.min(1, (4.75 - z) / (4.75 - 1.80)));
+                return t * 2.61;
+            }
+            // 2. Elevated Front Veranda Deck (World X: [-4.8, 4.2], World Z: [0.3, 3.85])
+            if (x >= -4.75 && x <= 4.15 && z >= 0.30 && z <= 3.85) {
+                return 2.61;
+            }
+            // 3. Elevated Main Stilt House Interior Floor (World X: [-4.7, 4.7], World Z: [-4.6, 0.35])
+            if (x >= -4.70 && x <= 4.70 && z >= -4.60 && z <= 0.35) {
+                return 2.65;
+            }
+            // 4. Default Garden Ground
+            return 0.0;
+        }
+
+        // ============================================================================
+        // 10B. INTERACTIVE LANDSCAPE PAINTING ZOOM & ENGLISH QUIZ / TEACHER EDITOR
+        // ============================================================================
+        function updateQuestionCountBadges() {
+            Object.keys(landscapeQuizData).forEach(pid => {
+                const badge = document.getElementById(`badge-count-${pid}`);
+                if (badge) {
+                    const count = landscapeQuizData[pid].questions.length;
+                    badge.textContent = `${count} Q${count !== 1 ? 's' : ''}`;
+                }
+            });
+        }
+
+        function openPaintingQuiz(paintingId, openInTeacherMode = false) {
+            const data = landscapeQuizData[paintingId];
+            if (!data) return;
+
+            activePaintingId = paintingId;
+            activeQuestionIdx = 0;
+
+            // Smoothly zoom 3D camera right in front of the selected painting on the stilt house wall
+            currentCameraMode = 'gallery';
+            controls.enabled = true;
+            document.getElementById('fps-controls-overlay').classList.add('hidden');
+            cameraTransition.active = true;
+            cameraTransition.targetPos.copy(data.camPos);
+            cameraTransition.targetLook.copy(data.camLook);
+
+            // Populate Modal Header & Artwork
+            document.getElementById('pq-icon').textContent = data.icon;
+            document.getElementById('pq-title').textContent = data.title;
+            document.getElementById('pq-location-tag').textContent = data.locationTag;
+            document.getElementById('pq-description').textContent = data.description;
+            document.getElementById('pq-selector').value = paintingId;
+            document.getElementById('pq-art-preview').src = paintingDataUrls[paintingId] || '';
+
+            // Initialize student answer tracking for this painting if needed
+            if (!studentAnswerState[paintingId]) {
+                studentAnswerState[paintingId] = {};
+            }
+
+            playInteractionSound('wood');
+            document.getElementById('painting-quiz-modal').classList.remove('hidden');
+
+            switchQuizMode(openInTeacherMode ? 'teacher' : 'student');
+            updateQuestionCountBadges();
+        }
+
+        function closePaintingQuizModal() {
+            document.getElementById('painting-quiz-modal').classList.add('hidden');
+            playInteractionSound('wood');
+        }
+
+        function switchQuizMode(mode) {
+            currentQuizMode = mode;
+            const studentBtn = document.getElementById('tab-student-btn');
+            const teacherBtn = document.getElementById('tab-teacher-btn');
+            const studentPanel = document.getElementById('pq-student-panel');
+            const teacherPanel = document.getElementById('pq-teacher-panel');
+
+            if (mode === 'teacher') {
+                teacherBtn.classList.add('active');
+                studentBtn.classList.remove('active');
+                studentPanel.classList.add('hidden');
+                teacherPanel.classList.remove('hidden');
+                renderTeacherEditor();
+            } else {
+                studentBtn.classList.add('active');
+                teacherBtn.classList.remove('active');
+                teacherPanel.classList.add('hidden');
+                studentPanel.classList.remove('hidden');
+                renderStudentQuizQuestion();
+            }
+        }
+
+        function renderStudentQuizQuestion() {
+            const data = landscapeQuizData[activePaintingId];
+            const questions = data.questions;
+            const dotsContainer = document.getElementById('pq-question-dots');
+            const progressLabel = document.getElementById('pq-progress-label');
+            const scoreBadge = document.getElementById('pq-score-badge');
+            const qText = document.getElementById('pq-question-text');
+            const mcContainer = document.getElementById('pq-mc-options');
+            const textBox = document.getElementById('pq-text-answer-box');
+            const feedbackBox = document.getElementById('pq-feedback-box');
+            const typeBadge = document.getElementById('pq-q-type-badge');
+
+            // Update Score Badge
+            const stateMap = studentAnswerState[activePaintingId] || {};
+            let correctCount = 0;
+            questions.forEach((q, idx) => {
+                if (stateMap[idx] && stateMap[idx].isCorrect) correctCount++;
+            });
+            scoreBadge.textContent = `Score: ${correctCount}/${questions.length}`;
+
+            if (questions.length === 0) {
+                dotsContainer.innerHTML = '';
+                progressLabel.textContent = '0 Questions';
+                qText.textContent = 'Chưa có câu hỏi nào cho bức tranh này. Giáo viên hãy chuyển sang tab "👩‍🏫 Giáo viên (Chỉnh sửa)" để thêm câu hỏi mới!';
+                mcContainer.innerHTML = '';
+                textBox.classList.add('hidden');
+                feedbackBox.classList.add('hidden');
+                return;
+            }
+
+            if (activeQuestionIdx >= questions.length) activeQuestionIdx = questions.length - 1;
+            if (activeQuestionIdx < 0) activeQuestionIdx = 0;
+
+            const currentQ = questions[activeQuestionIdx];
+            progressLabel.textContent = `Question ${activeQuestionIdx + 1} of ${questions.length}`;
+            typeBadge.textContent = currentQ.type === 'mc' ? 'Multiple Choice Question' : 'Speaking / Writing Question';
+
+            // Render Question Number Pills
+            dotsContainer.innerHTML = '';
+            questions.forEach((_, idx) => {
+                const pill = document.createElement('button');
+                const ans = stateMap[idx];
+                let colorClass = 'bg-amber-950/70 text-amber-200 border-amber-400/30';
+                if (ans) {
+                    colorClass = ans.isCorrect
+                        ? 'bg-emerald-700/80 text-white border-emerald-400'
+                        : 'bg-rose-800/80 text-white border-rose-400';
+                }
+                if (idx === activeQuestionIdx) {
+                    colorClass += ' ring-2 ring-amber-300 scale-105';
+                }
+                pill.className = `w-7 h-7 rounded-lg text-xs font-bold border transition ${colorClass}`;
+                pill.textContent = idx + 1;
+                pill.onclick = () => {
+                    activeQuestionIdx = idx;
+                    renderStudentQuizQuestion();
+                };
+                dotsContainer.appendChild(pill);
+            });
+
+            qText.textContent = currentQ.question;
+            feedbackBox.classList.add('hidden');
+            mcContainer.innerHTML = '';
+
+            const savedAns = stateMap[activeQuestionIdx];
+
+            if (currentQ.type === 'mc') {
+                textBox.classList.add('hidden');
+                mcContainer.classList.remove('hidden');
+
+                currentQ.options.forEach((optText, oIdx) => {
+                    const btn = document.createElement('button');
+                    let btnStyle = 'btn-cultural bg-black/35 text-amber-50 border-amber-300/25';
+
+                    if (savedAns !== undefined) {
+                        if (oIdx === currentQ.correctIndex) {
+                            btnStyle = 'bg-emerald-800/75 border-emerald-400 text-emerald-100 font-semibold';
+                        } else if (oIdx === savedAns.selectedIdx && !savedAns.isCorrect) {
+                            btnStyle = 'bg-rose-900/75 border-rose-400 text-rose-100';
+                        }
+                    }
+
+                    btn.className = `w-full text-left px-4 py-2.5 rounded-xl text-xs sm:text-sm border transition flex items-center justify-between ${btnStyle}`;
+                    btn.innerHTML = `<span>${optText}</span>`;
+                    btn.onclick = () => selectStudentMCOption(oIdx);
+                    mcContainer.appendChild(btn);
+                });
+            } else {
+                mcContainer.classList.add('hidden');
+                textBox.classList.remove('hidden');
+                const inputEl = document.getElementById('pq-student-input');
+                inputEl.value = savedAns ? savedAns.textValue : '';
+            }
+
+            if (savedAns) {
+                showQuestionFeedback(savedAns.isCorrect, currentQ);
+            }
+
+            // Enable/Disable Prev & Next buttons
+            document.getElementById('pq-prev-btn').disabled = activeQuestionIdx === 0;
+            document.getElementById('pq-prev-btn').style.opacity = activeQuestionIdx === 0 ? '0.4' : '1';
+        }
+
+        function selectStudentMCOption(optionIndex) {
+            const data = landscapeQuizData[activePaintingId];
+            const currentQ = data.questions[activeQuestionIdx];
+            const isCorrect = optionIndex === currentQ.correctIndex;
+
+            studentAnswerState[activePaintingId][activeQuestionIdx] = {
+                selectedIdx: optionIndex,
+                isCorrect: isCorrect
+            };
+
+            playInteractionSound(isCorrect ? 'tea' : 'wood');
+            renderStudentQuizQuestion();
+        }
+
+        function checkStudentTextAnswer() {
+            const inputEl = document.getElementById('pq-student-input');
+            const val = inputEl.value.trim();
+            const data = landscapeQuizData[activePaintingId];
+            const currentQ = data.questions[activeQuestionIdx];
+
+            if (!val) {
+                showToast('✍️', 'Hãy nhập câu trả lời Tiếng Anh của bạn trước khi kiểm tra!');
+                return;
+            }
+
+            studentAnswerState[activePaintingId][activeQuestionIdx] = {
+                textValue: val,
+                isCorrect: true
+            };
+            playInteractionSound('tea');
+            renderStudentQuizQuestion();
+        }
+
+        function showQuestionFeedback(isCorrect, questionObj) {
+            const feedbackBox = document.getElementById('pq-feedback-box');
+            feedbackBox.classList.remove('hidden');
+
+            if (questionObj.type === 'mc') {
+                if (isCorrect) {
+                    feedbackBox.className = 'rounded-xl p-3 text-xs leading-relaxed border bg-emerald-950/70 border-emerald-400/50 text-emerald-100';
+                    feedbackBox.innerHTML = `<strong>🎉 Correct! Tuyệt vời!</strong><br/>${questionObj.explanation || ''}`;
+                } else {
+                    const rightOpt = questionObj.options[questionObj.correctIndex] || '';
+                    feedbackBox.className = 'rounded-xl p-3 text-xs leading-relaxed border bg-rose-950/70 border-rose-400/50 text-rose-100';
+                    feedbackBox.innerHTML = `<strong>💡 Not quite right!</strong> Correct Answer: <span class="underline font-semibold">${rightOpt}</span><br/>${questionObj.explanation || ''}`;
+                }
+            } else {
+                feedbackBox.className = 'rounded-xl p-3 text-xs leading-relaxed border bg-emerald-950/70 border-emerald-400/50 text-emerald-100';
+                feedbackBox.innerHTML = `<strong>🌟 Model Answer / Gợi ý trả lời từ Giáo viên:</strong><br/><em>"${questionObj.sampleAnswer || ''}"</em><br/><span class="text-amber-200/90">${questionObj.explanation || ''}</span>`;
+            }
+        }
+
+        function navigateQuizQuestion(step) {
+            const questions = landscapeQuizData[activePaintingId].questions;
+            if (questions.length === 0) return;
+            activeQuestionIdx = (activeQuestionIdx + step + questions.length) % questions.length;
+            playInteractionSound('step');
+            renderStudentQuizQuestion();
+        }
+
+        function resetCurrentPaintingQuiz() {
+            studentAnswerState[activePaintingId] = {};
+            activeQuestionIdx = 0;
+            playInteractionSound('wood');
+            renderStudentQuizQuestion();
+            showToast('↻', 'Đã làm mới bài tập Tiếng Anh của bức tranh này!');
+        }
+
+        // TEACHER MODE: Add, Remove, and Customize Questions & Answers Live
+        function updatePaintingDescription(newDesc) {
+            landscapeQuizData[activePaintingId].description = newDesc;
+            document.getElementById('pq-description').textContent = newDesc;
+        }
+
+        function renderTeacherEditor() {
+            const data = landscapeQuizData[activePaintingId];
+            document.getElementById('teacher-desc-input').value = data.description;
+            const listEl = document.getElementById('teacher-questions-list');
+            listEl.innerHTML = '';
+
+            data.questions.forEach((q, qIdx) => {
+                const item = document.createElement('div');
+                item.className = 'bg-black/45 border border-amber-400/30 rounded-2xl p-3.5 space-y-2.5';
+
+                const header = document.createElement('div');
+                header.className = 'flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/15 pb-2';
+                header.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-0.5 rounded-lg bg-amber-600/40 border border-amber-400/40 text-amber-200 text-xs font-bold">
+                            Câu ${qIdx + 1}
+                        </span>
+                        <select onchange="changeTeacherQuestionType(${qIdx}, this.value)" class="bg-amber-950/80 border border-amber-400/30 rounded-lg px-2 py-1 text-xs text-amber-100">
+                            <option value="mc" ${q.type === 'mc' ? 'selected' : ''}>Trắc nghiệm (4 đáp án A/B/C/D)</option>
+                            <option value="text" ${q.type === 'text' ? 'selected' : ''}>Tự luận / Speaking gợi ý</option>
+                        </select>
+                    </div>
+                    <button onclick="deleteTeacherQuestion(${qIdx})" class="px-2.5 py-1 rounded-lg bg-rose-900/60 hover:bg-rose-700 text-rose-100 text-xs font-semibold transition">
+                        🗑️ Xóa câu hỏi
+                    </button>
+                `;
+                item.appendChild(header);
+
+                // Question Prompt Input
+                const qInputWrap = document.createElement('div');
+                qInputWrap.innerHTML = `
+                    <label class="text-[11px] text-amber-300/90 font-medium block mb-1">Nội dung câu hỏi Tiếng Anh (Question):</label>
+                    <input type="text" value="${q.question.replace(/"/g, '&quot;')}" oninput="updateTeacherQuestionField(${qIdx}, 'question', this.value)" class="w-full bg-amber-950/50 border border-amber-400/30 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none" />
+                `;
+                item.appendChild(qInputWrap);
+
+                if (q.type === 'mc') {
+                    const optsGrid = document.createElement('div');
+                    optsGrid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1';
+                    q.options.forEach((optVal, oIdx) => {
+                        const optDiv = document.createElement('div');
+                        optDiv.className = 'flex items-center gap-1.5 bg-amber-950/35 p-1.5 rounded-xl border border-amber-300/20';
+                        optDiv.innerHTML = `
+                            <input type="radio" name="correct-q-${qIdx}" ${q.correctIndex === oIdx ? 'checked' : ''} onchange="updateTeacherQuestionField(${qIdx}, 'correctIndex', ${oIdx})" title="Chọn làm đáp án đúng" class="accent-emerald-500 cursor-pointer" />
+                            <input type="text" value="${optVal.replace(/"/g, '&quot;')}" oninput="updateTeacherMCOption(${qIdx}, ${oIdx}, this.value)" class="w-full bg-transparent text-xs text-amber-50 focus:outline-none" />
+                        `;
+                        optsGrid.appendChild(optDiv);
+                    });
+                    item.appendChild(optsGrid);
+                } else {
+                    const sampleWrap = document.createElement('div');
+                    sampleWrap.innerHTML = `
+                        <label class="text-[11px] text-emerald-300 font-medium block mb-1">Đáp án mẫu / Gợi ý trả lời (Model Answer):</label>
+                        <input type="text" value="${(q.sampleAnswer || '').replace(/"/g, '&quot;')}" oninput="updateTeacherQuestionField(${qIdx}, 'sampleAnswer', this.value)" class="w-full bg-amber-950/50 border border-emerald-400/30 rounded-xl px-3 py-1.5 text-xs text-emerald-100 focus:outline-none" />
+                    `;
+                    item.appendChild(sampleWrap);
+                }
+
+                // Explanation Input
+                const expWrap = document.createElement('div');
+                expWrap.innerHTML = `
+                    <label class="text-[11px] text-amber-200/75 block mb-1">Giải thích từ vựng / Ghi chú (Explanation):</label>
+                    <input type="text" value="${(q.explanation || '').replace(/"/g, '&quot;')}" oninput="updateTeacherQuestionField(${qIdx}, 'explanation', this.value)" class="w-full bg-amber-950/30 border border-amber-300/20 rounded-xl px-3 py-1 text-xs text-amber-100 focus:outline-none" />
+                `;
+                item.appendChild(expWrap);
+
+                listEl.appendChild(item);
+            });
+
+            updateQuestionCountBadges();
+        }
+
+        function updateTeacherQuestionField(qIdx, field, value) {
+            const q = landscapeQuizData[activePaintingId].questions[qIdx];
+            if (!q) return;
+            q[field] = value;
+        }
+
+        function updateTeacherMCOption(qIdx, optIdx, value) {
+            const q = landscapeQuizData[activePaintingId].questions[qIdx];
+            if (!q || !q.options) return;
+            q.options[optIdx] = value;
+        }
+
+        function changeTeacherQuestionType(qIdx, newType) {
+            const q = landscapeQuizData[activePaintingId].questions[qIdx];
+            if (!q) return;
+            q.type = newType;
+            if (newType === 'mc' && (!q.options || q.options.length === 0)) {
+                q.options = ['A. Option 1', 'B. Option 2', 'C. Option 3', 'D. Option 4'];
+                q.correctIndex = 0;
+            }
+            renderTeacherEditor();
+        }
+
+        function addNewTeacherQuestion() {
+            const questions = landscapeQuizData[activePaintingId].questions;
+            questions.push({
+                type: 'mc',
+                question: `New English question #${questions.length + 1} about ${landscapeQuizData[activePaintingId].title}?`,
+                options: [
+                    'A. Correct cultural answer',
+                    'B. Second option',
+                    'C. Third option',
+                    'D. Fourth option'
+                ],
+                correctIndex: 0,
+                sampleAnswer: 'Sample answer for students.',
+                explanation: 'Teacher explanation and vocabulary note.'
+            });
+            playInteractionSound('tea');
+            renderTeacherEditor();
+            showToast('＋', `Đã thêm câu hỏi số ${questions.length}!`);
+        }
+
+        function deleteTeacherQuestion(qIdx) {
+            const questions = landscapeQuizData[activePaintingId].questions;
+            questions.splice(qIdx, 1);
+            studentAnswerState[activePaintingId] = {};
+            playInteractionSound('wood');
+            renderTeacherEditor();
+            showToast('🗑️', 'Đã xóa câu hỏi khỏi danh sách');
+        }
+
+        // Trigger smooth climb up the wooden staircase onto the stilt house veranda
+        function climbStairsAction() {
+            setCameraView('fps', true);
+            teleportToStairsAndClimb();
+        }
+
+        function teleportToStairsAndClimb() {
+            if (currentCameraMode !== 'fps') {
+                setCameraView('fps', true);
+            }
+            // Place player at the foot of the wooden stairs looking up
+            camera.position.set(3.2, 1.72, 5.45);
+            currentGroundHeight = 0;
+            fpsYaw = 0.0;
+            fpsPitch = 0.16;
+            autoClimbPath.active = true;
+            autoClimbPath.progress = 0;
+            playInteractionSound('step');
+            showToast('🪜', 'Đang bước lên 9 bậc cầu thang gỗ để lên hiên nhà sàn...');
+        }
+
+        // Cultural Object Action Handlers
+        function triggerHammockSwing(withToast = false) {
+            hammockSwingEnergy = 0.85;
+            playInteractionSound('wood');
+            if (withToast) showToast('🪢', 'Võng đay đang đung đưa êm ả dưới gầm sàn mát rượi...');
+        }
+
+        function toggleBambooBlinds(withToast = false) {
+            areBlindsRolledUp = !areBlindsRolledUp;
+            blindsTargetScaleY = areBlindsRolledUp ? 0.18 : 1.0;
+            playInteractionSound('wood');
+            if (withToast) {
+                showToast('🎋', areBlindsRolledUp ? 'Đã cuộn mành tre đón gió mát vào hiên nhà' : 'Đã thả mành tre che nắng hiên nhà sàn');
+            }
+        }
+
+        function pourTeaInteraction(withToast = false) {
+            playInteractionSound('tea');
+            teaSteamParticles.forEach(p => {
+                p.scale.setScalar(1.8);
+                setTimeout(() => p.scale.setScalar(1.0), 1200);
+            });
+            if (withToast) showToast('🍵', 'Thưởng thức chén trà sen thơm ngát trên chiếc phản gỗ mát lành');
+        }
+
+        function feedKoiFish() {
+            // Throw a generous handful of pellets near the wooden pier
+            const rx = pondCenter.x - 1.1 + (Math.random() - 0.5) * 1.8;
+            const rz = pondCenter.z - 1.1 + (Math.random() - 0.5) * 1.8;
+            spawnFishFoodAt(rx, rz, 15);
+            showToast('🐟', 'Đã rải cám thơm xuống ao sen! Bạn có thể click trực tiếp lên mặt nước để cho cá ăn thêm');
+        }
+
+        function toggleAllLanterns() {
+            areLanternsOn = !areLanternsOn;
+            const btn = document.getElementById('btn-lanterns');
+            if (areLanternsOn) btn.classList.add('active');
+            else btn.classList.remove('active');
+
+            lanternLights.forEach(l => {
+                l.intensity = areLanternsOn ? 1.65 : 0;
+            });
+            lanternGlowMeshes.forEach(m => {
+                m.material.emissiveIntensity = areLanternsOn ? 0.95 : 0.12;
+            });
+            playInteractionSound('wood');
+            showToast('🏮', areLanternsOn ? 'Đã thắp sáng đèn lồng lụa & đèn dầu ấm áp' : 'Đã tắt hệ thống đèn lồng');
+        }
+
+        function toggleRoofStyle() {
+            isTerracottaRoof = !isTerracottaRoof;
+            const label = document.getElementById('roof-label');
+            const btn = document.getElementById('btn-roof');
+
+            roofMeshes.forEach(rm => {
+                rm.material.map = isTerracottaRoof ? terracottaTex : palmThatchTex;
+                rm.material.needsUpdate = true;
+            });
+
+            if (isTerracottaRoof) {
+                label.textContent = 'Mái ngói cổ';
+                btn.classList.add('active');
+                showToast('🧱', 'Đã chuyển sang kiến trúc Mái ngói đất nung truyền thống');
+            } else {
+                label.textContent = 'Mái lá cọ';
+                btn.classList.remove('active');
+                showToast('🌿', 'Đã chuyển sang kiến trúc Mái lá cọ vùng cao dày dặn');
+            }
+            playInteractionSound('wood');
+        }
+
+        function setTimeOfDay(mode) {
+            currentTimeMode = mode;
+            ['day', 'sunset', 'night'].forEach(m => {
+                const el = document.getElementById(`btn-${m}`);
+                if (m === mode) el.classList.add('active');
+                else el.classList.remove('active');
+            });
+
+            if (mode === 'day') {
+                scene.background.setHex(0x9bd3f5);
+                scene.fog.color.setHex(0x9bd3f5);
+                sunLight.color.setHex(0xfff1d0);
+                sunLight.intensity = 1.45;
+                sunLight.position.set(22, 32, 18);
+                hemiLight.intensity = 0.65;
+                ambientLight.intensity = 0.35;
+                if (firefliesSystem) firefliesSystem.material.opacity = 0.0;
+                showToast('☀️', 'Buổi sáng thanh bình nơi làng quê Việt Nam');
+            } else if (mode === 'sunset') {
+                scene.background.setHex(0xdf7a4e);
+                scene.fog.color.setHex(0xdf7a4e);
+                sunLight.color.setHex(0xff8c42);
+                sunLight.intensity = 1.3;
+                sunLight.position.set(-28, 12, 16);
+                hemiLight.intensity = 0.45;
+                ambientLight.intensity = 0.3;
+                if (firefliesSystem) firefliesSystem.material.opacity = 0.35;
+                if (!areLanternsOn) toggleAllLanterns();
+                showToast('🌅', 'Hoàng hôn buông xuống nhuốm vàng mái nhà sàn');
+            } else if (mode === 'night') {
+                scene.background.setHex(0x0b1528);
+                scene.fog.color.setHex(0x0b1528);
+                sunLight.color.setHex(0x7ca6f5);
+                sunLight.intensity = 0.35;
+                sunLight.position.set(15, 28, -15);
+                hemiLight.intensity = 0.2;
+                ambientLight.intensity = 0.15;
+                if (firefliesSystem) firefliesSystem.material.opacity = 0.9;
+                if (!areLanternsOn) toggleAllLanterns();
+                showToast('🌙', 'Đêm trăng thanh tĩnh, đom đóm lập lòe bên hiên nhà sàn');
+            }
+        }
+
+        function setCameraView(preset, skipDefaultFpsPos = false) {
+            currentCameraMode = preset;
+            ['overview', 'veranda', 'gallery', 'underneath', 'pond', 'fps'].forEach(p => {
+                const btn = document.getElementById(`cam-${p}`);
+                if (btn) {
+                    if (p === preset) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                }
+            });
+
+            const fpsOverlay = document.getElementById('fps-controls-overlay');
+
+            if (preset === 'fps') {
+                controls.enabled = false;
+                fpsOverlay.classList.remove('hidden');
+                if (!skipDefaultFpsPos) {
+                    // Start near the brick path in front of the wooden stairs & pond
+                    camera.position.set(2.4, 1.72, 6.8);
+                    currentGroundHeight = 0;
+                    fpsYaw = -0.15;
+                    fpsPitch = 0.05;
+                    autoClimbPath.active = false;
+                    showToast('🚶', 'Chế độ đi dạo: Dùng WASD để đi bộ, tiến tới cầu thang gỗ bên phải để leo lên nhà sàn!');
+                }
+                cameraTransition.active = false;
+                return;
+            }
+
+            autoClimbPath.active = false;
+            controls.enabled = true;
+            fpsOverlay.classList.add('hidden');
+            cameraTransition.active = true;
+
+            if (preset === 'overview') {
+                cameraTransition.targetPos.set(17, 9.5, 19);
+                cameraTransition.targetLook.set(0, 3.0, 0);
+            } else if (preset === 'veranda') {
+                cameraTransition.targetPos.set(3.8, 4.3, 7.6);
+                cameraTransition.targetLook.set(-1.5, 3.6, 2.2);
+            } else if (preset === 'gallery') {
+                cameraTransition.targetPos.set(0, 3.85, 5.2);
+                cameraTransition.targetLook.set(0, 3.65, 0.2);
+                showToast('🖼️', 'Nhấn trực tiếp vào bất kỳ bức tranh phong cảnh nào trên tường để Zoom & mở câu hỏi Tiếng Anh!');
+            } else if (preset === 'underneath') {
+                cameraTransition.targetPos.set(1.5, 1.8, 3.6);
+                cameraTransition.targetLook.set(-1.2, 1.1, -1.3);
+            } else if (preset === 'pond') {
+                cameraTransition.targetPos.set(7.8, 3.2, 13.8);
+                cameraTransition.targetLook.set(4.5, 0.1, 8.8);
+            }
+        }
+
+        function toggleHelpModal() {
+            const modal = document.getElementById('help-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        let toastTimeout = null;
+        function showToast(icon, text) {
+            const toast = document.getElementById('toast-message');
+            document.getElementById('toast-icon').textContent = icon;
+            document.getElementById('toast-text').textContent = text;
+            toast.style.opacity = '1';
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 3400);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // ============================================================================
+        // 11. MAIN ANIMATION LOOP (Articulated Koi AI, Water Ripples, Stair Climbing)
+        // ============================================================================
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+            const elapsed = clock.getElapsedTime();
+
+            // 1. Hammock gentle pendulum swing
+            if (hammockPivot) {
+                hammockPivot.rotation.z = Math.sin(elapsed * 2.3) * 0.25 * hammockSwingEnergy;
+                hammockSwingEnergy = Math.max(0.18, hammockSwingEnergy * 0.996);
+            }
+
+            // 2. Smooth Bamboo Blinds Roll Up/Down
+            bambooBlindsGroup.forEach(bPivot => {
+                bPivot.scale.y += (blindsTargetScaleY - bPivot.scale.y) * 0.08;
+            });
+
+            // 3. Update Floating Fish Food Pellets
+            for (let i = fishFoodPellets.length - 1; i >= 0; i--) {
+                const p = fishFoodPellets[i];
+                p.age += delta;
+                if (p.mesh.position.y > 0.045) {
+                    p.mesh.position.y = Math.max(0.045, p.mesh.position.y - delta * 1.8);
+                } else {
+                    p.mesh.position.y = 0.042 + Math.sin(elapsed * 5 + p.bobPhase) * 0.008;
+                }
+                if (p.eaten || p.age > 25) {
+                    scene.remove(p.mesh);
+                    fishFoodPellets.splice(i, 1);
+                }
+            }
+
+            // 4. Update Concentric Water Ripples
+            for (let i = waterRipples.length - 1; i >= 0; i--) {
+                const rp = waterRipples[i];
+                rp.age += delta;
+                const progress = rp.age / rp.maxAge;
+                if (progress >= 1) {
+                    scene.remove(rp.mesh);
+                    rp.mesh.geometry.dispose();
+                    rp.mesh.material.dispose();
+                    waterRipples.splice(i, 1);
+                } else {
+                    const s = 1 + progress * 14 * rp.maxScale;
+                    rp.mesh.scale.set(s, s, 1);
+                    rp.mesh.material.opacity = 0.65 * (1 - progress);
+                }
+            }
+
+            // 5. Realistic Multi-Segment Koi Fish AI & Articulated Swimming Motion
+            koiFishList.forEach((koi, idx) => {
+                // Find nearest uneaten floating food pellet
+                let nearestPellet = null;
+                let minDist = Infinity;
+                for (let i = 0; i < fishFoodPellets.length; i++) {
+                    const pel = fishFoodPellets[i];
+                    if (pel.eaten) continue;
+                    const d = Math.hypot(pel.mesh.position.x - koi.pos.x, pel.mesh.position.z - koi.pos.z);
+                    if (d < minDist) {
+                        minDist = d;
+                        nearestPellet = pel;
+                    }
+                }
+
+                let targetX, targetZ, desiredSpeed;
+                if (nearestPellet) {
+                    targetX = nearestPellet.mesh.position.x;
+                    targetZ = nearestPellet.mesh.position.z;
+                    desiredSpeed = koi.baseSpeed * 2.35; // Accelerate eagerly toward food!
+
+                    // Eat pellet when close enough
+                    if (minDist < 0.24 && nearestPellet.mesh.position.y <= 0.09) {
+                        nearestPellet.eaten = true;
+                        koi.excitedTimer = 0.9;
+                        playInteractionSound('gulp');
+                        spawnWaterRipple(targetX, targetZ, 0.95, 0xffffff);
+                    }
+                } else {
+                    // Peaceful wandering inside the lotus pond
+                    const distToWp = Math.hypot(koi.waypoint.x - koi.pos.x, koi.waypoint.z - koi.pos.z);
+                    if (distToWp < 0.45) {
+                        const ang = Math.random() * Math.PI * 2;
+                        const rad = 0.8 + Math.random() * 3.6;
+                        koi.waypoint.set(
+                            pondCenter.x + Math.cos(ang) * rad,
+                            -0.04,
+                            pondCenter.z + Math.sin(ang) * rad
+                        );
+                    }
+                    targetX = koi.waypoint.x;
+                    targetZ = koi.waypoint.z;
+                    desiredSpeed = koi.baseSpeed;
+                }
+
+                if (koi.excitedTimer > 0) {
+                    koi.excitedTimer -= delta;
+                    desiredSpeed = koi.baseSpeed * 2.6;
+                }
+
+                koi.currentSpeed += (desiredSpeed - koi.currentSpeed) * 0.08;
+
+                // Smooth angular steering toward target
+                const desiredHeading = Math.atan2(targetX - koi.pos.x, targetZ - koi.pos.z);
+                let angleDiff = desiredHeading - koi.heading;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+                const turnRate = nearestPellet ? 4.8 : 2.2;
+                koi.heading += angleDiff * Math.min(1, delta * turnRate);
+
+                // Move Koi forward along its heading
+                koi.pos.x += Math.sin(koi.heading) * koi.currentSpeed * delta;
+                koi.pos.z += Math.cos(koi.heading) * koi.currentSpeed * delta;
+
+                // Keep strictly within pond boundary
+                const dCenter = Math.hypot(koi.pos.x - pondCenter.x, koi.pos.z - pondCenter.z);
+                if (dCenter > 4.65) {
+                    const pushAng = Math.atan2(pondCenter.x - koi.pos.x, pondCenter.z - koi.pos.z);
+                    koi.heading = pushAng;
+                }
+
+                // Vertical tilt & surface rise when approaching food pellet
+                const targetY = (nearestPellet && minDist < 1.3) ? 0.015 : -0.045;
+                koi.pos.y += (targetY - koi.pos.y) * 0.1;
+
+                koi.root.position.copy(koi.pos);
+                koi.root.rotation.y = koi.heading;
+                // Pitch nose upward slightly when rising to eat a floating pellet
+                const targetPitch = (nearestPellet && minDist < 1.1) ? -0.22 : (koi.excitedTimer > 0 ? Math.sin(elapsed * 18) * 0.12 : 0);
+                koi.headGroup.rotation.x += (targetPitch - koi.headGroup.rotation.x) * 0.15;
+
+                // Multi-segment S-curve articulated spine & tail undulation
+                const swimFreq = 5.5 + koi.currentSpeed * 6.5;
+                koi.wigglePhase += delta * swimFreq;
+                const w = koi.wigglePhase;
+
+                koi.headGroup.rotation.y = Math.sin(w) * 0.07;
+                koi.midPivot.rotation.y = Math.sin(w - 0.85) * 0.18 + angleDiff * 0.25;
+                koi.rearPivot.rotation.y = Math.sin(w - 1.7) * 0.28;
+                koi.tailFinPivot.rotation.y = Math.sin(w - 2.4) * 0.42;
+
+                // Gentle pectoral fin sculling motion
+                koi.leftPec.rotation.y = Math.sin(w * 0.8) * 0.22;
+                koi.rightPec.rotation.y = -Math.sin(w * 0.8) * 0.22;
+            });
+
+            // 6. Lotus Flowers Gentle Ripple
+            lotusPetalsGroup.forEach(fl => {
+                fl.position.y = fl.userData.baseY + Math.sin(elapsed * 1.8 + fl.userData.phase) * 0.015;
+            });
+
+            // 7. Rising Tea Steam Animation
+            teaSteamParticles.forEach(p => {
+                p.position.y += delta * 0.18;
+                const progress = (p.position.y - p.userData.baseY) / 0.45;
+                p.material.opacity = Math.max(0, 0.45 * (1 - progress));
+                if (p.position.y > p.userData.baseY + 0.45) {
+                    p.position.y = p.userData.baseY;
+                }
+            });
+
+            // 8. Breeze Swaying Trees (Areca Palms, Banana Leaves, Bamboo Groves)
+            swayingFoliage.forEach(item => {
+                item.group.rotation.z = Math.sin(elapsed * item.speed + item.phase) * item.amp;
+                item.group.rotation.x = Math.cos(elapsed * item.speed * 0.8 + item.phase) * (item.amp * 0.6);
+            });
+
+            // 9. Nighttime Fireflies Floating Motion
+            if (firefliesSystem && firefliesSystem.material.opacity > 0.01) {
+                const posArr = firefliesSystem.geometry.attributes.position.array;
+                for (let i = 0; i < posArr.length / 3; i++) {
+                    posArr[i * 3 + 1] += Math.sin(elapsed * 1.5 + i) * 0.004;
+                    posArr[i * 3] += Math.cos(elapsed * 1.1 + i) * 0.003;
+                }
+                firefliesSystem.geometry.attributes.position.needsUpdate = true;
+            }
+
+            // 10. Camera Control Modes (First-Person Walk + Stair Climbing vs Orbit)
+            if (currentCameraMode === 'fps') {
+                // Guided Auto-Climb when user clicks directly on the wooden stairs
+                if (autoClimbPath.active) {
+                    autoClimbPath.progress += delta * 0.42;
+                    const t = Math.min(1, autoClimbPath.progress);
+                    if (t < 0.78) {
+                        // Ascend along the 9 wooden steps (x = 3.2, z from 5.0 to 1.65)
+                        const st = t / 0.78;
+                        camera.position.x = 3.2;
+                        camera.position.z = 5.0 - st * 3.35;
+                        fpsYaw = st * 0.45;
+                        fpsPitch = 0.12 * (1 - st);
+                    } else {
+                        // Step onto the main bamboo veranda looking across the porch & garden
+                        const vt = (t - 0.78) / 0.22;
+                        camera.position.x = 3.2 - vt * 2.8;
+                        camera.position.z = 1.65 + vt * 1.1;
+                        fpsYaw = 0.45 + vt * 2.1;
+                        fpsPitch = -0.08 * vt;
+                    }
+                    stepSoundAccumulator += delta * 3.8;
+                    if (stepSoundAccumulator >= 1) {
+                        stepSoundAccumulator = 0;
+                        playInteractionSound('step');
+                    }
+                    if (t >= 1) {
+                        autoClimbPath.active = false;
+                        showToast('🏡', 'Bạn đã lên tới hiên nhà sàn! Dùng WASD để đi dạo trên sàn tre hoặc bước vào trong nhà');
+                    }
+                } else {
+                    const walkSpeed = 4.0 * delta;
+                    const forwardVec = new THREE.Vector3(-Math.sin(fpsYaw), 0, -Math.cos(fpsYaw));
+                    const rightVec = new THREE.Vector3(Math.cos(fpsYaw), 0, -Math.sin(fpsYaw));
+
+                    let movedDist = 0;
+                    const nextPos = camera.position.clone();
+                    if (moveState.forward) { nextPos.addScaledVector(forwardVec, walkSpeed); movedDist += walkSpeed; }
+                    if (moveState.backward) { nextPos.addScaledVector(forwardVec, -walkSpeed); movedDist += walkSpeed; }
+                    if (moveState.right) { nextPos.addScaledVector(rightVec, walkSpeed); movedDist += walkSpeed; }
+                    if (moveState.left) { nextPos.addScaledVector(rightVec, -walkSpeed); movedDist += walkSpeed; }
+
+                    // Check elevation change so player can climb stairs smoothly or drop off low edges
+                    const candidateGround = getWalkableSurfaceHeight(nextPos.x, nextPos.z);
+                    if (candidateGround - currentGroundHeight <= 1.45) {
+                        camera.position.x = Math.max(-18, Math.min(18, nextPos.x));
+                        camera.position.z = Math.max(-16, Math.min(20, nextPos.z));
+                    }
+
+                    if (movedDist > 0 && isGroundedFPS) {
+                        stepSoundAccumulator += movedDist;
+                        if (stepSoundAccumulator > 1.05) {
+                            stepSoundAccumulator = 0;
+                            if (currentGroundHeight > 0.1) playInteractionSound('step');
+                        }
+                    }
+                }
+
+                // Smoothly interpolate ground height for stairs/veranda + jump gravity
+                const targetSurfaceY = getWalkableSurfaceHeight(camera.position.x, camera.position.z);
+                if (isGroundedFPS) {
+                    currentGroundHeight += (targetSurfaceY - currentGroundHeight) * 0.22;
+                    const isMoving = moveState.forward || moveState.backward || moveState.left || moveState.right || autoClimbPath.active;
+                    const headBob = isMoving ? Math.sin(elapsed * 10) * 0.045 : 0;
+                    camera.position.y = currentGroundHeight + 1.70 + headBob;
+                } else {
+                    fpsVelocityY -= 11.5 * delta;
+                    camera.position.y += fpsVelocityY * delta;
+                    if (camera.position.y <= targetSurfaceY + 1.70) {
+                        camera.position.y = targetSurfaceY + 1.70;
+                        currentGroundHeight = targetSurfaceY;
+                        fpsVelocityY = 0;
+                        isGroundedFPS = true;
+                    }
+                }
+
+                // Update Elevation Status HUD
+                const statusEl = document.getElementById('fps-elevation-status');
+                if (statusEl) {
+                    if (currentGroundHeight > 2.3) {
+                        statusEl.textContent = '📍 Vị trí: Đang ở trên Sàn Tre & Hiên Nhà Sàn (Độ cao +2.6m)';
+                    } else if (currentGroundHeight > 0.25) {
+                        const stepNum = Math.min(9, Math.max(1, Math.ceil((currentGroundHeight / 2.61) * 9)));
+                        statusEl.textContent = `🪜 Vị trí: Đang bước trên Cầu Thang Gỗ (Bậc ${stepNum}/9)`;
+                    } else {
+                        statusEl.textContent = '📍 Vị trí: Sân vườn & Ao sen (Đi tới cầu thang bên phải nhà để leo lên sàn)';
+                    }
+                }
+
+                const lookTarget = new THREE.Vector3(
+                    camera.position.x - Math.sin(fpsYaw) * Math.cos(fpsPitch),
+                    camera.position.y + Math.sin(fpsPitch),
+                    camera.position.z - Math.cos(fpsYaw) * Math.cos(fpsPitch)
+                );
+                camera.lookAt(lookTarget);
+            } else {
+                if (cameraTransition.active) {
+                    camera.position.lerp(cameraTransition.targetPos, 0.06);
+                    controls.target.lerp(cameraTransition.targetLook, 0.06);
+                    if (camera.position.distanceTo(cameraTransition.targetPos) < 0.15) {
+                        cameraTransition.active = false;
+                    }
+                }
+                controls.update();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function () {
+            initScene();
+            animate();
+        };
+    </script>
+</body>
+</html>
